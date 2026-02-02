@@ -1,20 +1,30 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/RealAuthContext';
 
 const LoginPortal: React.FC = () => {
-  const { login, isLoading, error } = useAuth();
+  const { login, isLoading, error, clearError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await login({ email, password });
+    try {
+      await login({ email, password });
+    } catch (err) {
+      // Error is handled in context
+    }
   };
 
   const handleDemoLogin = () => {
     setEmail('admin@amzify.com');
     setPassword('admin123');
+    clearError();
+  };
+
+  const handleRetry = () => {
+    clearError();
   };
 
   return (
@@ -29,9 +39,21 @@ const LoginPortal: React.FC = () => {
         </div>
 
         {error && (
-          <div className="p-4 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl flex items-center space-x-2 mb-6">
-            <AlertTriangle className="w-4 h-4" />
-            <span>{error}</span>
+          <div className="p-4 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl mb-6">
+            <div className="flex items-start space-x-2 mb-3">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <span className="font-medium">{error}</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleRetry}
+                className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1 px-3 py-1.5 bg-red-100 rounded-lg hover:bg-red-200 transition"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Try Again
+              </button>
+            </div>
           </div>
         )}
 
@@ -55,15 +77,24 @@ const LoginPortal: React.FC = () => {
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Password
             </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-red-500 transition-all"
-              placeholder="••••••••"
-              disabled={isLoading}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-red-500 transition-all"
+                placeholder="••••••••"
+                disabled={isLoading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-red-600 hover:text-red-700"
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
           </div>
 
           <button
