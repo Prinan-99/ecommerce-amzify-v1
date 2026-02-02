@@ -113,75 +113,78 @@ const App: React.FC = () => {
   }, []);
 
   const addToCart = async (product: Product) => {
-    if (!isAuthenticated) {
-      // For guest users, add to local cart and show login prompt
-      setCart(prev => {
-        const existing = prev.find(item => item.id === product.id);
-        if (existing) {
-          return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
-        }
-        return [...prev, { ...product, quantity: 1 }];
-      });
-      setIsCartOpen(true);
-      return;
-    }
+    // ALWAYS add to local cart first for instant feedback (guest or authenticated)
+    setCart(prev => {
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) {
+        return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [...prev, { ...product, quantity: 1 }];
+    });
+    
+    setIsCartOpen(true);
 
-    try {
-      await customerApiService.addToCart(product.id, 1);
-      // Reload cart to get updated data
-      const cartResponse = await customerApiService.getCart();
-      setCart(cartResponse.items || []);
-      setIsCartOpen(true);
-    } catch (error) {
-      console.error('Add to cart error:', error);
-      // Fallback to local state for demo
-      setCart(prev => {
-        const existing = prev.find(item => item.id === product.id);
-        if (existing) {
-          return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
-        }
-        return [...prev, { ...product, quantity: 1 }];
-      });
-      setIsCartOpen(true);
+    // If authenticated, sync with backend
+    if (isAuthenticated) {
+      try {
+        await customerApiService.addToCart(product.id, 1);
+        // Reload cart to get updated data from server
+        const cartResponse = await customerApiService.getCart();
+        setCart(cartResponse.items || []);
+      } catch (error) {
+        console.error('Add to cart sync error:', error);
+        // Local cart is already updated, so continue with demo experience
+      }
     }
+    // For guests, cart remains in local state - fully functional demo shopping
   };
 
   const updateQuantity = async (id: string, delta: number) => {
-    try {
-      const item = cart.find(item => item.id === id);
-      if (item) {
-        const newQuantity = item.quantity + delta;
-        if (newQuantity <= 0) {
-          await customerApiService.removeFromCart(id);
-        } else {
-          await customerApiService.updateCartItem(id, newQuantity);
-        }
-        // Reload cart
-        const cartResponse = await customerApiService.getCart();
-        setCart(cartResponse.items || []);
+    // Always update local cart immediately for instant feedback
+    setCart(prev => prev.map(item => {
+      if (item.id === id) {
+        const newQty = Math.max(0, item.quantity + delta);
+        return { ...item, quantity: newQty };
       }
-    } catch (error) {
-      console.error('Update cart error:', error);
-      // Fallback to local state
-      setCart(prev => prev.map(item => {
-        if (item.id === id) {
-          const newQty = Math.max(0, item.quantity + delta);
-          return { ...item, quantity: newQty };
+      return item;
+    }).filter(item => item.quantity > 0));
+
+    // If authenticated, sync with backend
+    if (isAuthenticated) {
+      try {
+        const item = cart.find(item => item.id === id);
+        if (item) {
+          const newQuantity = item.quantity + delta;
+          if (newQuantity <= 0) {
+            await customerApiService.removeFromCart(id);
+          } else {
+            await customerApiService.updateCartItem(id, newQuantity);
+          }
+          // Reload cart from server
+          const cartResponse = await customerApiService.getCart();
+          setCart(cartResponse.items || []);
         }
-        return item;
-      }).filter(item => item.quantity > 0));
+      } catch (error) {
+        console.error('Update cart sync error:', error);
+        // Local cart already updated, continue with demo
+      }
     }
   };
 
   const removeFromCart = async (id: string) => {
-    try {
-      await customerApiService.removeFromCart(id);
-      const cartResponse = await customerApiService.getCart();
-      setCart(cartResponse.items || []);
-    } catch (error) {
-      console.error('Remove from cart error:', error);
-      // Fallback to local state
-      setCart(prev => prev.filter(item => item.id !== id));
+    // Always update local cart immediately
+    setCart(prev => prev.filter(item => item.id !== id));
+
+    // If authenticated, sync with backend
+    if (isAuthenticated) {
+      try {
+        await customerApiService.removeFromCart(id);
+        const cartResponse = await customerApiService.getCart();
+        setCart(cartResponse.items || []);
+      } catch (error) {
+        console.error('Remove from cart sync error:', error);
+        // Local cart already updated, continue with demo
+      }
     }
   };
 

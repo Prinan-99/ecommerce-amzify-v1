@@ -1,0 +1,238 @@
+File Tree: amzify-final
+Generated on: 2/2/2026, 10:03:37 AM
+Root path: c:\Users\Pria Nandhini M A\Documents\amzify-final
+
+────────────────────────────────────────────────────────────────────────────────
+
+├── 📁 amzify-admin-panel/
+│   ├── 📁 components/
+│   │   ├── 📄 LoginPortal.tsx
+│   │   ├── 📄 Sidebar.tsx
+│   │   └── 📄 Topbar.tsx
+│   ├── 📁 context/
+│   │   ├── 📄 AuthContext.tsx
+│   │   └── 📄 RealAuthContext.tsx
+│   ├── 📁 pages/
+│   │   ├── 📄 AuditLogs.tsx
+│   │   ├── 📄 Dashboard.tsx
+│   │   ├── 📄 GovernanceRules.tsx
+│   │   ├── 📄 Login.tsx
+│   │   ├── 📄 Logistics.tsx
+│   │   ├── 📄 Offers.tsx
+│   │   ├── 📄 Orders.tsx
+│   │   ├── 📄 Products.tsx
+│   │   ├── 📄 SellerApplications.tsx
+│   │   ├── 📄 Sellers.tsx
+│   │   ├── 📄 Settings.tsx
+│   │   ├── 📄 SystemHealth.tsx
+│   │   ├── 📄 Tickets.tsx
+│   │   └── 📄 Users.tsx
+│   ├── 📁 services/
+│   │   ├── 📄 adminApi.ts
+│   │   └── 📄 api.ts
+│   ├── ⚙️ .gitignore
+│   ├── 📄 App.tsx
+│   ├── 📝 README.md
+│   ├── 🌐 index.html
+│   ├── 📄 index.tsx
+│   ├── ⚙️ metadata.json
+│   ├── ⚙️ package-lock.json
+│   ├── ⚙️ package.json
+│   ├── ⚙️ tsconfig.json
+│   ├── 📄 types.ts
+│   └── 📄 vite.config.ts
+├── 📁 amzify-customer-panel/
+│   ├── 📁 components/
+│   │   ├── 📄 AISearch.tsx
+│   │   ├── 📄 BecomeSellerModal.tsx
+│   │   ├── 📄 CartDrawer.tsx
+│   │   ├── 📄 CheckoutModal.tsx
+│   │   ├── 📄 FeedbackModal.tsx
+│   │   ├── 📄 LoginPortal.tsx
+│   │   ├── 📄 PostPurchaseModal.tsx
+│   │   ├── 📄 ProductModal.tsx
+│   │   ├── 📄 ProfileModal.tsx
+│   │   └── 📄 SellerDashboard.tsx
+│   ├── 📁 context/
+│   │   └── 📄 RealAuthContext.tsx
+│   ├── 📁 services/
+│   │   ├── 📄 api.ts
+│   │   ├── 📄 customerApi.ts
+│   │   └── 📄 geminiService.ts
+│   ├── ⚙️ .gitignore
+│   ├── 📄 App.tsx
+│   ├── 📝 README.md
+│   ├── 📄 constants.tsx
+│   ├── 🌐 index.html
+│   ├── 📄 index.tsx
+│   ├── ⚙️ metadata.json
+│   ├── ⚙️ package-lock.json
+│   ├── ⚙️ package.json
+│   ├── ⚙️ tsconfig.json
+│   ├── 📄 types.ts
+│   └── 📄 vite.config.ts
+├── 📁 amzify-seller-panel/
+│   ├── 📁 components/
+│   │   ├── 📄 LoginPortal.tsx
+│   │   ├── 📄 ProductModal.tsx
+│   │   ├── 📄 ProfileModal.tsx
+│   │   ├── 📄 RevenueDashboard.tsx
+│   │   ├── 📄 Sidebar.tsx
+│   │   ├── 📄 SocialMediaManager.tsx
+│   │   └── 📄 Topbar.tsx
+│   ├── 📁 context/
+│   │   ├── 📄 AuthContext.tsx
+│   │   └── 📄 RealAuthContext.tsx
+│   ├── 📁 pages/
+│   │   ├── 📄 AuditLogs.tsx
+│   │   ├── 📄 Dashboard.tsx
+│   │   ├── 📄 GovernanceRules.tsx
+│   │   ├── 📄 Login.tsx
+│   │   ├── 📄 Logistics.tsx
+│   │   ├── 📄 Offers.tsx
+│   │   ├── 📄 Orders.tsx
+│   │   ├── 📄 Products.tsx
+│   │   ├── 📄 Sellers.tsx
+│   │   ├── 📄 Settings.tsx
+│   │   ├── 📄 SystemHealth.tsx
+│   │   ├── 📄 Tickets.tsx
+│   │   └── 📄 Users.tsx
+│   ├── 📁 services/
+│   │   ├── 📄 api.ts
+│   │   └── 📄 sellerApi.ts
+│   ├── ⚙️ .gitignore
+│   ├── 📄 App.tsx
+│   ├── 📝 README.md
+│   ├── 🌐 index.html
+│   ├── 📄 index.tsx
+│   ├── ⚙️ metadata.json
+│   ├── ⚙️ package-lock.json
+│   ├── ⚙️ package.json
+│   ├── ⚙️ tsconfig.json
+│   ├── 📄 types.ts
+│   └── 📄 vite.config.ts
+├── 📁 backend/
+│   ├── 📁 config/
+│   │   ├── 📄 database.js
+│   │   └── 📄 prisma.js
+│   ├── 📁 generated/
+│   │   └── 📁 prisma/
+│   │       ├── 📁 internal/
+│   │       │   ├── 📄 class.ts
+│   │       │   ├── 📄 prismaNamespace.ts
+│   │       │   └── 📄 prismaNamespaceBrowser.ts
+│   │       ├── 📁 models/
+│   │       │   ├── 📄 account_deletion_requests.ts
+│   │       │   ├── 📄 addresses.ts
+│   │       │   ├── 📄 cart_items.ts
+│   │       │   ├── 📄 categories.ts
+│   │       │   ├── 📄 customer_feedback.ts
+│   │       │   ├── 📄 marketing_campaigns.ts
+│   │       │   ├── 📄 order_items.ts
+│   │       │   ├── 📄 orders.ts
+│   │       │   ├── 📄 otp_verifications.ts
+│   │       │   ├── 📄 product_variants.ts
+│   │       │   ├── 📄 products.ts
+│   │       │   ├── 📄 refresh_tokens.ts
+│   │       │   ├── 📄 seller_profiles.ts
+│   │       │   ├── 📄 shipments.ts
+│   │       │   ├── 📄 support_tickets.ts
+│   │       │   ├── 📄 ticket_messages.ts
+│   │       │   ├── 📄 tracking_events.ts
+│   │       │   ├── 📄 users.ts
+│   │       │   └── 📄 wishlist_items.ts
+│   │       ├── 📁 runtime/
+│   │       │   ├── 📄 client.d.ts
+│   │       │   ├── 📄 client.js
+│   │       │   ├── 📄 edge-esm.js
+│   │       │   ├── 📄 edge.js
+│   │       │   ├── 📄 index-browser.d.ts
+│   │       │   ├── 📄 index-browser.js
+│   │       │   ├── 📄 library.d.ts
+│   │       │   ├── 📄 library.js
+│   │       │   ├── 📄 react-native.js
+│   │       │   ├── 📄 wasm-compiler-edge.js
+│   │       │   └── 📄 wasm.js
+│   │       ├── 📄 browser.ts
+│   │       ├── 📄 client.d.ts
+│   │       ├── 📄 client.js
+│   │       ├── 📄 client.ts
+│   │       ├── 📄 commonInputTypes.ts
+│   │       ├── 📄 default.d.ts
+│   │       ├── 📄 default.js
+│   │       ├── 📄 edge.d.ts
+│   │       ├── 📄 edge.js
+│   │       ├── 📄 enums.ts
+│   │       ├── 📄 index-browser.js
+│   │       ├── 📄 index.d.ts
+│   │       ├── 📄 index.js
+│   │       ├── 📄 models.ts
+│   │       ├── ⚙️ package.json
+│   │       ├── 📄 query_compiler_fast_bg.js
+│   │       ├── 📄 query_compiler_fast_bg.wasm
+│   │       ├── 📄 query_compiler_fast_bg.wasm-base64.js
+│   │       ├── 📄 query_engine-windows.dll.node
+│   │       ├── 📄 schema.prisma
+│   │       ├── 📄 wasm-edge-light-loader.mjs
+│   │       ├── 📄 wasm-worker-loader.mjs
+│   │       ├── 📄 wasm.d.ts
+│   │       └── 📄 wasm.js
+│   ├── 📁 middleware/
+│   │   └── 📄 auth.js
+│   ├── 📁 prisma/
+│   │   └── 📄 schema.prisma
+│   ├── 📁 routes/
+│   │   ├── 📄 admin.js
+│   │   ├── 📄 analytics.js
+│   │   ├── 📄 auth.js
+│   │   ├── 📄 cart.js
+│   │   ├── 📄 categories.js
+│   │   ├── 📄 logistics.js
+│   │   ├── 📄 orders.js
+│   │   ├── 📄 products.js
+│   │   └── 📄 sellerApplications.js
+│   ├── 📁 scripts/
+│   │   ├── 📄 add-otp-feedback-tables.js
+│   │   ├── 📄 fix-schema.js
+│   │   ├── 📄 migrate.js
+│   │   └── 📄 seed.js
+│   ├── 📁 services/
+│   │   └── 📄 emailService.js
+│   ├── ⚙️ .env.example
+│   ├── ⚙️ .gitignore
+│   ├── 📝 PRISMA_MIGRATION_SUMMARY.md
+│   ├── ⚙️ package-lock.json
+│   ├── ⚙️ package.json
+│   ├── 📄 prisma.config.ts
+│   └── 📄 server.js
+├── 📁 lumina-luxe-e-commerce/
+├── 📁 nexus-admin-console/
+└── 📁 shared/
+    └── 📁 auth/
+        ├── 📄 AccessControllerService.ts
+        ├── 📄 AccessDeniedPage.tsx
+        ├── 📄 AdminCredentialsManager.ts
+        ├── 📄 ApiService.ts
+        ├── 📄 AuthContext.tsx
+        ├── 📄 AuthenticationService.ts
+        ├── 📄 CookieService.ts
+        ├── 📄 ErrorHandler.ts
+        ├── 📄 IntegrationTests.test.ts
+        ├── 📄 LoginPortal.tsx
+        ├── 📄 NotificationManager.tsx
+        ├── 📄 ProtectedRoute.tsx
+        ├── 📝 README.md
+        ├── 📄 SessionManager.ts
+        ├── 📄 TokenService.ts
+        ├── 📄 constants.ts
+        ├── 📄 hooks.ts
+        ├── 📄 index.ts
+        ├── ⚙️ package-lock.json
+        ├── ⚙️ package.json
+        ├── ⚙️ tsconfig.json
+        ├── 📄 types.ts
+        ├── 📄 utils.ts
+        └── 📄 vitest.config.ts
+
+────────────────────────────────────────────────────────────────────────────────
+Generated by FileTree Pro Extension

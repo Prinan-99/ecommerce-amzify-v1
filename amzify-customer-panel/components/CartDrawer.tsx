@@ -100,6 +100,22 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, items, onUpdat
 
         {items.length > 0 && (
           <div className="p-8 border-t border-slate-50 bg-white space-y-6">
+            {!isAuthenticated && (
+              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-6 mb-4 border border-indigo-100">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <ShoppingBag className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-slate-900 text-sm mb-1">Guest Shopping Mode</h4>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      You're browsing as a guest! Your cart is saved locally. Login or create an account to complete your purchase.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="space-y-2">
               <div className="flex justify-between text-slate-400 font-bold text-[10px] uppercase tracking-widest">
                 <span>Sub-Investment</span>
@@ -117,12 +133,23 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, items, onUpdat
             
             <button 
               onClick={isAuthenticated ? onCheckout : onLoginPrompt}
-              className="w-full bg-slate-950 text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-indigo-600 transition-all shadow-2xl flex items-center justify-center gap-3 active:scale-95 group"
+              className={`w-full py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all shadow-2xl flex items-center justify-center gap-3 active:scale-95 group ${
+                isAuthenticated 
+                  ? 'bg-slate-950 text-white hover:bg-indigo-600' 
+                  : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700'
+              }`}
             >
-              {isAuthenticated ? 'Proceed to Checkout' : 'Login to Checkout'} <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              {isAuthenticated ? 'Proceed to Checkout' : 'Login to Complete Purchase'} <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
             {!isAuthenticated && (
-              <p className="text-[9px] text-center text-slate-600 font-medium">Create an account to complete your purchase</p>
+              <div className="space-y-2">
+                <p className="text-[10px] text-center text-slate-600 font-semibold">
+                  🎁 Create a free account in 30 seconds to checkout
+                </p>
+                <p className="text-[9px] text-center text-slate-400">
+                  Your cart items will be saved and synced to your account
+                </p>
+              </div>
             )}
             <p className="text-[9px] text-center text-slate-400 font-black uppercase tracking-widest">Secure Checkout Protocol Active</p>
           </div>

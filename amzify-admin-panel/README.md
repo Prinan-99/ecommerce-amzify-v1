@@ -21,10 +21,12 @@ A production-grade React administrative dashboard for large-scale e-commerce pla
 4. **Access the application**:
    Open [http://localhost:5174](http://localhost:5174) in your browser.
 
-## Authentication
+## Demo Credentials
 Use the following credentials for testing:
-- **Email**: `admin@nexus.com`
+- **Admin Email**: `admin@amzify.com`
 - **Password**: `admin123`
+
+**Note:** Run `npm run seed` in the backend folder first to create demo users and sample data.
 
 ## Features
 - **Global Dashboard**: Real-time sales and user growth analytics using Recharts.
