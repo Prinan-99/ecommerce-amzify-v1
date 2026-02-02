@@ -9,6 +9,12 @@ interface RegisterData extends LoginCredentials {
   firstName: string;
   lastName: string;
   phone?: string;
+  otp?: string;
+}
+
+interface ForgotPasswordResponse {
+  success: boolean;
+  message: string;
 }
 
 class CustomerApiService {
@@ -71,6 +77,34 @@ class CustomerApiService {
 
   async getCurrentUser() {
     return this.request('/auth/me');
+  }
+
+  async sendOtp(email: string, type: 'verification' | 'password_reset') {
+    return this.request('/auth/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, type })
+    });
+  }
+
+  async verifyOtp(email: string, otp: string, type: 'verification' | 'password_reset') {
+    return this.request('/auth/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp, type })
+    });
+  }
+
+  async requestPasswordReset(email: string): Promise<ForgotPasswordResponse> {
+    return this.request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    return this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword })
+    });
   }
 
   async logout() {
