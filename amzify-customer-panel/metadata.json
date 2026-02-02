@@ -1,0 +1,7 @@
+{
+  "name": "Amzify Customer Panel",
+  "description": "A premium, AI-powered e-commerce customer experience featuring personalized shopping assistance, smooth transitions, and smart product discovery.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "name": "Nexus Admin Console",
+  "description": "Enterprise-grade e-commerce administration panel for Nexus Platform. Features include user management, seller oversight, product moderation, and real-time analytics.",
+  "requestFramePermissions": []
+}
