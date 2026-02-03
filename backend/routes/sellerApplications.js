@@ -84,9 +84,14 @@ router.get('/:id', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Approve seller application (Admin only)
-router.post('/:id/approve', authenticateToken, requireAdmin, async (req, res) => {
+router.post('/:id/approve', 
+  authenticateToken, 
+  requireAdmin,
+  [body('category_id').optional().isUUID()],
+  async (req, res) => {
   try {
     const { id } = req.params;
+    const { category_id } = req.body;
     const adminId = req.user.userId;
 
     const application = await prisma.seller_applications.findUnique({
@@ -132,6 +137,7 @@ router.post('/:id/approve', authenticateToken, requireAdmin, async (req, res) =>
           user_id: user.id,
           company_name: application.company_name,
           business_type: application.business_type,
+          category_id: category_id || null,
           description: application.business_description,
           business_address: application.business_address,
           city: application.city,

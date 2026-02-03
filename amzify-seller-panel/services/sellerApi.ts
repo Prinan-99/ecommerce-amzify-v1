@@ -33,11 +33,19 @@ class SellerApiService {
       },
     };
 
+    console.log('🌐 API Request:', url, config);
+
     const response = await fetch(url, config);
     const data = await response.json();
 
+    console.log('📥 API Response:', response.status, data);
+
     if (!response.ok) {
-      throw new Error(data.error || 'API request failed');
+      console.error('❌ API Error:', data);
+      console.error('❌ Full error response:', { status: response.status, statusText: response.statusText, data });
+      const error: any = new Error(data.error || data.message || `Request failed with status ${response.status}`);
+      error.response = { data, status: response.status };
+      throw error;
     }
 
     return data;
@@ -109,6 +117,15 @@ class SellerApiService {
 
   async getSellerAnalytics(timeRange: string = '30d') {
     return this.request(`/analytics/seller?range=${timeRange}`);
+  }
+
+  // New comprehensive dashboard endpoints
+  async getDashboardStats() {
+    return this.request('/products/seller/dashboard-stats');
+  }
+
+  async getRevenueAnalytics(period: '7d' | '30d' | '90d' = '7d') {
+    return this.request(`/products/seller/revenue-analytics?period=${period}`);
   }
 
   // Products endpoints (seller-specific)

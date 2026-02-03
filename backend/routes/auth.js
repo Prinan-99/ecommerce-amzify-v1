@@ -362,60 +362,45 @@ router.post('/register/seller', [
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Create user and seller profile in a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.users.create({
-        data: {
-          email,
-          password_hash: passwordHash,
-          role: 'seller',
-          first_name: firstName,
-          last_name: lastName,
-          phone,
-          is_verified: false,
-          is_active: true
-        },
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          first_name: true,
-          last_name: true,
-          phone: true
-        }
-      });
-
-      // Create comprehensive seller profile
-      await tx.seller_profiles.create({
-        data: {
-          user_id: user.id,
-          company_name: companyName,
-          business_type: businessType,
-          description: businessDescription || '',
-          business_address: businessAddress || '',
-          city: city || '',
-          state: state || '',
-          postal_code: postalCode || '',
-          gst_number: gstNumber || '',
-          pan_number: panNumber || '',
-          bank_name: bankName || '',
-          account_number: accountNumber || '',
-          ifsc_code: ifscCode || '',
-          account_holder_name: accountHolderName || '',
-          is_approved: false,
-          commission_rate: 0.15
-        }
-      });
-
-      return user;
+    // Create seller application for admin review
+    const application = await prisma.seller_applications.create({
+      data: {
+        email,
+        password_hash: passwordHash,
+        first_name: firstName,
+        last_name: lastName,
+        phone: phone || '',
+        company_name: companyName,
+        business_type: businessType || 'Individual/Sole Proprietor',
+        business_description: businessDescription || '',
+        business_address: businessAddress || '',
+        city: city || '',
+        state: state || '',
+        postal_code: postalCode || '',
+        gst_number: gstNumber || '',
+        pan_number: panNumber || '',
+        bank_name: bankName || '',
+        account_number: accountNumber || '',
+        ifsc_code: ifscCode || '',
+        account_holder_name: accountHolderName || '',
+        status: 'pending'
+      },
+      select: {
+        id: true,
+        email: true,
+        first_name: true,
+        last_name: true,
+        company_name: true,
+        status: true,
+        created_at: true
+      }
     });
 
     res.status(201).json({
       success: true,
-      message: 'Seller application submitted successfully. You will receive an email once approved (usually within 24-48 hours).',
-      user: { 
-        ...result, 
-        company_name: companyName,
+      message: 'Seller application submitted successfully! Our admin team will review your application within 24-48 hours. You will receive an email with login credentials once approved.',
+      application: {
+        ...application,
         is_approved: false
       }
     });
@@ -441,8 +426,7 @@ router.post('/login', [
     // Get user with seller profile if applicable
     const user = await prisma.users.findUnique({
       where: { 
-        email,
-        is_active: true
+        email
       },
       include: {
         seller_profiles: {
@@ -458,15 +442,25 @@ router.post('/login', [
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Check if user account is active
+    if (!user.is_active) {
+      return res.status(401).json({ error: 'Account is deactivated. Please contact support.' });
+    }
+
     // Check password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Check if seller is approved
-    if (user.role === 'seller' && user.seller_profiles[0] && !user.seller_profiles[0].is_approved) {
-      return res.status(403).json({ error: 'Seller account pending approval' });
+    // Check if seller has profile and is approved
+    if (user.role === 'seller') {
+      if (user.seller_profiles.length === 0) {
+        return res.status(403).json({ error: 'Seller profile not found. Please contact support.' });
+      }
+      if (!user.seller_profiles[0].is_approved) {
+        return res.status(403).json({ error: 'Seller account pending approval' });
+      }
     }
 
     const tokens = generateTokens(user.id);

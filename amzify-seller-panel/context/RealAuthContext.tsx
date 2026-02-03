@@ -103,6 +103,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setUser(null);
       setError(null);
+      // Redirect to seller landing page
+      window.location.href = '/';
     }
   };
 

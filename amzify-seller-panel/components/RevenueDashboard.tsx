@@ -77,6 +77,39 @@ const RevenueDashboard: React.FC<RevenueDashboardProps> = ({ onClose }) => {
     }
   };
 
+  const exportPayoutHistoryToCSV = () => {
+    // Prepare CSV headers
+    const headers = ['Date', 'Amount (₹)', 'Method', 'Reference', 'Status'];
+    
+    // Prepare CSV rows
+    const rows = payoutHistory.map(payout => [
+      formatDate(payout.date),
+      payout.amount.toFixed(2),
+      payout.method,
+      payout.reference,
+      payout.status.toUpperCase()
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `payout_history_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const loadPayoutHistory = async () => {
     try {
       const response = await sellerApiService.getPayoutHistory();
@@ -316,9 +349,13 @@ const RevenueDashboard: React.FC<RevenueDashboardProps> = ({ onClose }) => {
       <div className="bg-white p-8 rounded-2xl border border-slate-100">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-bold text-slate-900">Payout History</h3>
-          <button className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all">
+          <button 
+            onClick={exportPayoutHistoryToCSV}
+            disabled={payoutHistory.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <Download className="w-4 h-4" />
-            Export
+            Export CSV
           </button>
         </div>
 
@@ -353,6 +390,13 @@ const RevenueDashboard: React.FC<RevenueDashboardProps> = ({ onClose }) => {
               ))}
             </tbody>
           </table>
+
+          {payoutHistory.length === 0 && (
+            <div className="text-center py-12">
+              <Wallet className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-600">No payout history available</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

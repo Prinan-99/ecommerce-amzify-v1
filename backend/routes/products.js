@@ -172,7 +172,8 @@ router.post('/', authenticateToken, requireSeller, [
   body('stock_quantity').optional().isInt({ min: 0 }),
   body('sku').optional().isLength({ max: 100 }),
   body('weight').optional().isFloat({ min: 0 }),
-  body('images').optional().isArray()
+  body('images').optional().isArray(),
+  body('status').optional().isIn(['draft', 'active', 'inactive'])
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -182,7 +183,7 @@ router.post('/', authenticateToken, requireSeller, [
 
     const {
       name, description, short_description, price, compare_price, cost_price,
-      category_id, stock_quantity = 0, sku, weight, images = [], dimensions
+      category_id, stock_quantity = 0, sku, weight, images = [], dimensions, status = 'draft'
     } = req.body;
 
     // Generate slug
@@ -206,12 +207,16 @@ router.post('/', authenticateToken, requireSeller, [
         weight,
         images,
         dimensions: dimensions ? JSON.stringify(dimensions) : null,
-        status: 'pending_approval'
+        status: status // Use the status from request (draft, active, or inactive)
       }
     });
 
+    const message = status === 'active' 
+      ? 'Product created and published successfully!' 
+      : 'Product saved as draft.';
+
     res.status(201).json({
-      message: 'Product created successfully. Awaiting approval.',
+      message,
       product
     });
   } catch (error) {
@@ -228,7 +233,8 @@ router.put('/:id', authenticateToken, requireSeller, [
   body('name').optional().trim().isLength({ min: 1, max: 255 }),
   body('description').optional().isLength({ max: 5000 }),
   body('price').optional().isFloat({ min: 0 }),
-  body('stock_quantity').optional().isInt({ min: 0 })
+  body('stock_quantity').optional().isInt({ min: 0 }),
+  body('status').optional().isIn(['draft', 'active', 'inactive'])
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -284,16 +290,40 @@ router.delete('/:id', authenticateToken, requireSeller, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const deletedProduct = await prisma.products.deleteMany({
+    // Check if product belongs to seller
+    const existingProduct = await prisma.products.findFirst({
       where: {
         id,
         seller_id: req.user.id
       }
     });
 
-    if (deletedProduct.count === 0) {
+    if (!existingProduct) {
       return res.status(404).json({ error: 'Product not found or access denied' });
     }
+
+    // Delete related data first (in transaction)
+    await prisma.$transaction(async (tx) => {
+      // Delete product variants
+      await tx.product_variants.deleteMany({
+        where: { product_id: id }
+      });
+
+      // Delete cart items
+      await tx.cart_items.deleteMany({
+        where: { product_id: id }
+      });
+
+      // Delete wishlist items
+      await tx.wishlist_items.deleteMany({
+        where: { product_id: id }
+      });
+
+      // Finally delete the product
+      await tx.products.delete({
+        where: { id }
+      });
+    });
 
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {
@@ -343,6 +373,256 @@ router.get('/seller/my-products', authenticateToken, requireSeller, async (req, 
   } catch (error) {
     console.error('Get seller products error:', error);
     res.status(500).json({ error: 'Failed to fetch products' });
+  }
+});
+
+// Get seller dashboard stats
+router.get('/seller/dashboard-stats', authenticateToken, requireSeller, async (req, res) => {
+  try {
+    const sellerId = req.user.userId;
+    
+    // Get comprehensive seller stats
+    const [
+      totalProducts,
+      activeProducts,
+      totalOrders,
+      pendingOrders,
+      totalRevenue,
+      monthlyRevenue,
+      topProducts,
+      recentOrders
+    ] = await Promise.all([
+      // Total products count
+      prisma.products.count({ where: { seller_id: sellerId } }),
+      
+      // Active products count  
+      prisma.products.count({ where: { seller_id: sellerId, status: 'active' } }),
+      
+      // Total orders (count of distinct orders with items from this seller)
+      prisma.order_items.findMany({
+        where: { seller_id: sellerId },
+        distinct: ['order_id']
+      }).then(items => new Set(items.map(i => i.order_id)).size),
+      
+      // Pending orders from this seller
+      prisma.orders.count({
+        where: {
+          status: 'pending',
+          order_items: {
+            some: {
+              seller_id: sellerId
+            }
+          }
+        }
+      }),
+      
+      // Total revenue (aggregate from order items)
+      prisma.order_items.aggregate({
+        where: {
+          seller_id: sellerId
+        },
+        _sum: { 
+          subtotal: true 
+        }
+      }),
+      
+      // Monthly revenue (last 30 days)
+      prisma.order_items.aggregate({
+        where: {
+          seller_id: sellerId,
+          created_at: {
+            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          }
+        },
+        _sum: { total_price: true }
+      }),
+      
+      // Top performing products
+      prisma.products.findMany({
+        where: { seller_id: sellerId },
+        orderBy: { created_at: 'desc' },
+        take: 6,
+        include: {
+          categories: {
+            select: { name: true }
+          },
+          order_items: {
+            where: { seller_id: sellerId },
+            select: { quantity: true, total_price: true }
+          }
+        }
+      }),
+      
+      // Recent orders
+      prisma.order_items.findMany({
+        where: { seller_id: sellerId },
+        include: {
+          orders: {
+            select: {
+              users: {
+                select: {
+                  first_name: true,
+                  last_name: true,
+                  email: true
+                            },
+                            include: {
+                              users: {
+                                select: {
+                                  first_name: true,
+                                  last_name: true,
+                                  email: true
+                                }
+                              }
+                }
+              }
+            }
+          },
+          products: {
+            select: {
+              name: true,
+              price: true
+            }
+          }
+        },
+        orderBy: { created_at: 'desc' },
+        take: 10
+      }),
+      
+      // Products by category
+      prisma.categories.findMany({
+        where: {
+          products: {
+            some: { seller_id: sellerId }
+          }
+        },
+        include: {
+          _count: {
+            select: {
+              products: {
+                where: { seller_id: sellerId }
+              }
+            }
+          }
+        }
+      })
+    ]);
+
+    // Calculate top products with sales data
+    const productsWithStats = topProducts.map(product => {
+      const totalSold = product.order_items.reduce((sum, item) => sum + item.quantity, 0);
+      const totalRevenue = product.order_items.reduce((sum, item) => sum + item.total_price, 0);
+      
+      return {
+        ...product,
+        totalSold,
+        totalRevenue,
+        order_items: undefined // Remove from response
+      };
+    }).sort((a, b) => b.totalSold - a.totalSold);
+
+    // Format recent orders
+    const formattedOrders = recentOrders.map(order => ({
+      id: order.id,
+      orderNumber: order.order_number,
+      customerName: `${order.users.first_name} ${order.users.last_name}`,
+      customerEmail: order.users.email,
+      totalAmount: order.total_amount,
+      status: order.status,
+      itemCount: order.order_items.length,
+      items: order.order_items.map(item => ({
+        productName: item.products.name,
+        quantity: item.quantity,
+        price: item.products.price
+      })),
+      createdAt: order.created_at
+    }));
+
+    // Calculate growth percentages (mock for now, could be real with date ranges)
+    const stats = {
+      totalRevenue: totalRevenue._sum.total_price || 0,
+      monthlyRevenue: monthlyRevenue._sum.total_price || 0,
+      totalProducts: totalProducts,
+      activeProducts: activeProducts,
+      totalOrders: totalOrders,
+      pendingOrders: pendingOrders,
+      
+      // Growth percentages (could be calculated with historical data)
+      revenueGrowth: 12.5,
+      ordersGrowth: 8.3,
+      productsGrowth: 15.2,
+      
+      // Additional metrics
+      averageOrderValue: totalOrders > 0 ? (totalRevenue._sum.total_price || 0) / totalOrders : 0,
+      conversionRate: 3.4, // Could be calculated from analytics
+    };
+
+    res.json({
+      stats,
+      topProducts: productsWithStats.slice(0, 6),
+      recentOrders: formattedOrders,
+      categoryBreakdown: categoryStats.map(cat => ({
+        name: cat.name,
+        productCount: cat._count.products,
+        percentage: totalProducts > 0 ? (cat._count.products / totalProducts) * 100 : 0
+      }))
+    });
+    
+  } catch (error) {
+    console.error('Get seller dashboard stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+  }
+});
+
+// Get seller revenue analytics (for charts)
+router.get('/seller/revenue-analytics', authenticateToken, requireSeller, async (req, res) => {
+  try {
+    const sellerId = req.user.userId;
+    const { period = '7d' } = req.query;
+    
+    let startDate;
+    switch(period) {
+      case '7d':
+        startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    // Get daily revenue data
+    const revenueData = await prisma.$queryRaw`
+      SELECT 
+        DATE(o.created_at) as date,
+        COUNT(DISTINCT o.id) as orders,
+        SUM(oi.subtotal) as revenue,
+        COUNT(DISTINCT o.customer_id) as customers
+      FROM orders o
+      JOIN order_items oi ON o.id = oi.order_id
+      JOIN products p ON oi.product_id = p.id
+      WHERE p.seller_id = ${sellerId}
+      AND o.created_at >= ${startDate}
+      GROUP BY DATE(o.created_at)
+      ORDER BY date ASC
+    `;
+
+    // Format data for charts
+    const chartData = revenueData.map(row => ({
+      date: row.date.toISOString().split('T')[0],
+      revenue: parseFloat(row.revenue) || 0,
+      orders: parseInt(row.orders) || 0,
+      customers: parseInt(row.customers) || 0
+    }));
+
+    res.json({ chartData, period });
+    
+  } catch (error) {
+    console.error('Get seller revenue analytics error:', error);
+    res.status(500).json({ error: 'Failed to fetch revenue analytics' });
   }
 });
 

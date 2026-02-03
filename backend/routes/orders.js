@@ -322,32 +322,39 @@ router.patch('/:id/status', authenticateToken, [
 router.get('/seller/my-orders', authenticateToken, requireSeller, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 100; // Increased limit for better UX
     const offset = (page - 1) * limit;
 
-    // Get orders that contain items from this seller
-    const [orderItems, total] = await Promise.all([
-      prisma.order_items.findMany({
-        where: { seller_id: req.user.id },
-        include: {
-          orders: {
-            include: {
-              users: {
-                select: {
-                  first_name: true,
-                  last_name: true,
-                  email: true
-                }
+    // Get orders that contain items from this seller with full details
+    const orderItems = await prisma.order_items.findMany({
+      where: { seller_id: req.user.id },
+      include: {
+        orders: {
+          include: {
+            users: {
+              select: {
+                first_name: true,
+                last_name: true,
+                email: true,
+                phone: true
               }
             }
           }
         },
-        orderBy: { created_at: 'desc' },
-        skip: offset,
-        take: limit
-      }),
-      prisma.order_items.count({ where: { seller_id: req.user.id } })
-    ]);
+        products: {
+          select: {
+            name: true,
+            sku: true,
+            images: true
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' },
+      skip: offset,
+      take: limit
+    });
+
+    const total = await prisma.order_items.count({ where: { seller_id: req.user.id } });
 
     // Group by order and calculate seller-specific totals
     const ordersMap = new Map();
@@ -359,19 +366,39 @@ router.get('/seller/my-orders', authenticateToken, requireSeller, async (req, re
           id: order.id,
           order_number: order.order_number,
           status: order.status,
+          payment_status: order.payment_status,
+          payment_method: order.payment_method,
           total_amount: order.total_amount,
+          subtotal: order.subtotal,
+          tax_amount: order.tax_amount,
+          shipping_amount: order.shipping_amount,
+          shipping_address: order.shipping_address,
+          billing_address: order.billing_address,
+          notes: order.notes,
           created_at: order.created_at,
+          updated_at: order.updated_at,
           first_name: order.users.first_name,
           last_name: order.users.last_name,
           email: order.users.email,
+          phone: order.users.phone,
           my_items_count: 0,
-          my_total: 0
+          my_total: 0,
+          items: []
         });
       }
       
       const orderData = ordersMap.get(order.id);
       orderData.my_items_count += 1;
       orderData.my_total += parseFloat(item.total_price);
+      orderData.items.push({
+        id: item.id,
+        product_name: item.product_name,
+        product_sku: item.product_sku,
+        quantity: item.quantity,
+        unit_price: parseFloat(item.unit_price),
+        total_price: parseFloat(item.total_price),
+        images: item.products?.images || []
+      });
     });
 
     const orders = Array.from(ordersMap.values());
@@ -388,6 +415,47 @@ router.get('/seller/my-orders', authenticateToken, requireSeller, async (req, re
   } catch (error) {
     console.error('Get seller orders error:', error);
     res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+});
+
+// Update order status (seller route)
+router.patch('/seller/orders/:id/status', authenticateToken, requireSeller, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['pending', 'processing', 'shipped', 'delivered', 'cancelled'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid order status' });
+    }
+
+    // Verify seller has items in this order
+    const orderItem = await prisma.order_items.findFirst({
+      where: {
+        order_id: id,
+        seller_id: req.user.id
+      }
+    });
+
+    if (!orderItem) {
+      return res.status(404).json({ error: 'Order not found or access denied' });
+    }
+
+    // Update order status
+    const order = await prisma.orders.update({
+      where: { id },
+      data: {
+        status,
+        updated_at: new Date()
+      }
+    });
+
+    res.json({
+      message: 'Order status updated successfully',
+      order
+    });
+  } catch (error) {
+    console.error('Update order status error:', error);
+    res.status(500).json({ error: 'Failed to update order status' });
   }
 });
 
