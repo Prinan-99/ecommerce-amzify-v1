@@ -1,9 +1,64 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
+import bcrypt from 'bcryptjs';
 import prisma from '../config/prisma.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
+import { mockUserStore } from '../services/mockUserStore.js';
 
 const router = express.Router();
+
+// Create mock seller (dev fallback)
+router.post('/mock-sellers', [
+  body('email').isEmail().normalizeEmail(),
+  body('password').isLength({ min: 6 }),
+  body('name').notEmpty(),
+  body('storeName').notEmpty()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, password, name, storeName, phone } = req.body;
+    const [firstName, ...rest] = name.split(' ');
+    const lastName = rest.length > 0 ? rest.join(' ') : 'Seller';
+
+    const user = {
+      id: `mock-seller-${Date.now()}`,
+      email,
+      role: 'seller',
+      first_name: firstName,
+      last_name: lastName,
+      phone: phone || null,
+      is_verified: true,
+      is_active: true,
+      company_name: storeName,
+      seller_approved: true,
+      password_hash: await bcrypt.hash(password, 10)
+    };
+
+    await mockUserStore.upsertUser(user);
+
+    res.json({
+      message: 'Mock seller created',
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        phone: user.phone,
+        is_verified: user.is_verified,
+        company_name: user.company_name,
+        seller_approved: user.seller_approved
+      }
+    });
+  } catch (error) {
+    console.error('Mock seller create error:', error);
+    res.status(500).json({ error: 'Failed to create mock seller' });
+  }
+});
 
 // Get all users
 router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
@@ -11,55 +66,189 @@ router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
     const { role, page = 1, limit = 20 } = req.query;
     const offset = (page - 1) * limit;
 
-    const whereClause = role ? { role } : {};
+    // Try to fetch from database first
+    try {
+      const whereClause = role ? { role } : {};
 
-    const [users, total] = await Promise.all([
-      prisma.users.findMany({
-        where: whereClause,
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          first_name: true,
-          last_name: true,
-          phone: true,
-          is_active: true,
-          is_verified: true,
-          created_at: true,
-          seller_profiles: {
-            select: {
-              company_name: true,
-              is_approved: true
+      const [users, total] = await Promise.all([
+        prisma.users.findMany({
+          where: whereClause,
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            first_name: true,
+            last_name: true,
+            phone: true,
+            is_active: true,
+            is_verified: true,
+            created_at: true,
+            seller_profiles: {
+              select: {
+                company_name: true,
+                is_approved: true
+              }
             }
-          }
-        },
-        orderBy: { created_at: 'desc' },
-        skip: offset,
-        take: parseInt(limit)
-      }),
-      prisma.users.count({ where: whereClause })
-    ]);
+          },
+          orderBy: { created_at: 'desc' },
+          skip: offset,
+          take: parseInt(limit)
+        }),
+        prisma.users.count({ where: whereClause })
+      ]);
 
-    // Format the response
-    const formattedUsers = users.map(user => ({
-      ...user,
-      company_name: user.seller_profiles[0]?.company_name,
-      seller_approved: user.seller_profiles[0]?.is_approved,
-      seller_profiles: undefined
-    }));
+      // Format the response
+      const formattedUsers = users.map(user => ({
+        id: user.id,
+        name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown User',
+        email: user.email,
+        role: user.role,
+        status: user.is_active ? 'ACTIVE' : 'SUSPENDED',
+        createdAt: user.created_at,
+        lastLoginIp: null,
+        lastActive: user.created_at,
+        company_name: user.seller_profiles[0]?.company_name,
+        seller_approved: user.seller_profiles[0]?.is_approved
+      }));
 
-    res.json({
-      users: formattedUsers,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit)
-      }
-    });
+      return res.json({
+        users: formattedUsers,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      });
+    } catch (dbError) {
+      // Fallback to mock store
+      console.log('Database failed, using mock store fallback');
+      const allMockUsers = await mockUserStore.getUsers();
+      const mockUsers = allMockUsers
+        .filter(u => !role || u.role === role)
+        .slice(offset, offset + parseInt(limit));
+
+      const formattedUsers = mockUsers.map(user => ({
+        id: user.id,
+        name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown User',
+        email: user.email,
+        role: user.role,
+        status: user.is_active ? 'ACTIVE' : 'SUSPENDED',
+        createdAt: user.created_at || new Date(),
+        lastLoginIp: null,
+        lastActive: user.created_at || new Date(),
+        company_name: user.company_name,
+        seller_approved: user.seller_approved
+      }));
+
+      const totalMockUsers = allMockUsers.filter(u => !role || u.role === role).length;
+      
+      return res.json({
+        users: formattedUsers,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: totalMockUsers,
+          pages: Math.ceil(totalMockUsers / limit)
+        }
+      });
+    }
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// Get all sellers (with fallback to mockUserStore)
+router.get('/sellers', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const offset = (page - 1) * limit;
+
+    // Try to fetch from database first
+    try {
+      const [sellers, total] = await Promise.all([
+        prisma.users.findMany({
+          where: { role: 'seller' },
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            first_name: true,
+            last_name: true,
+            phone: true,
+            is_active: true,
+            is_verified: true,
+            created_at: true,
+            seller_profiles: {
+              select: {
+                company_name: true,
+                is_approved: true
+              }
+            }
+          },
+          orderBy: { created_at: 'desc' },
+          skip: offset,
+          take: parseInt(limit)
+        }),
+        prisma.users.count({ where: { role: 'seller' } })
+      ]);
+
+      const formattedSellers = sellers.map(seller => ({
+        id: seller.id,
+        name: `${seller.first_name} ${seller.last_name}`,
+        email: seller.email,
+        role: seller.role,
+        phone: seller.phone,
+        status: seller.is_active ? 'ACTIVE' : 'SUSPENDED',
+        company_name: seller.seller_profiles[0]?.company_name || 'N/A',
+        is_approved: seller.seller_profiles[0]?.is_approved || false,
+        is_verified: seller.is_verified,
+        created_at: seller.created_at
+      }));
+
+      return res.json({
+        sellers: formattedSellers,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      });
+    } catch (dbError) {
+      // Fallback to mock store
+      const allMockUsers = await mockUserStore.getUsers();
+      const mockSellers = allMockUsers
+        .filter(u => u.role === 'seller')
+        .slice(offset, offset + parseInt(limit));
+
+      const totalMockSellers = allMockUsers.filter(u => u.role === 'seller').length;
+      
+      return res.json({
+        sellers: mockSellers.map(seller => ({
+          id: seller.id,
+          name: `${seller.first_name} ${seller.last_name}`,
+          email: seller.email,
+          role: seller.role,
+          phone: seller.phone,
+          status: seller.is_active ? 'ACTIVE' : 'SUSPENDED',
+          company_name: seller.company_name || 'N/A',
+          is_approved: seller.seller_approved || false,
+          is_verified: seller.is_verified,
+          created_at: seller.created_at || new Date()
+        })),
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: totalMockSellers,
+          pages: Math.ceil(totalMockSellers / limit)
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Get sellers error:', error);
+    res.status(500).json({ error: 'Failed to fetch sellers' });
   }
 });
 
@@ -373,6 +562,34 @@ router.get('/feedback', authenticateToken, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Get feedback error:', error);
     res.status(500).json({ error: 'Failed to fetch feedback' });
+  }
+});
+
+// Get feedback statistics
+router.get('/feedback/stats', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const [allFeedback, newCount, reviewedCount, respondedCount] = await Promise.all([
+      prisma.customer_feedback.findMany({
+        select: { rating: true }
+      }),
+      prisma.customer_feedback.count({ where: { status: 'new' } }),
+      prisma.customer_feedback.count({ where: { status: 'reviewed' } }),
+      prisma.customer_feedback.count({ where: { status: 'responded' } })
+    ]);
+
+    const avgRating = allFeedback.length > 0
+      ? (allFeedback.reduce((sum, f) => sum + (f.rating || 0), 0) / allFeedback.length).toFixed(1)
+      : 0;
+
+    res.json({
+      new: newCount,
+      under_review: reviewedCount,
+      responded: respondedCount,
+      avg_rating: parseFloat(avgRating)
+    });
+  } catch (error) {
+    console.error('Get feedback stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch feedback stats' });
   }
 });
 

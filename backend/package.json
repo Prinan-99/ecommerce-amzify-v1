@@ -8,7 +8,11 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "migrate": "node scripts/migrate.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "seed-mock": "node scripts/seed-mock-data.js",
+    "seed-applications": "node scripts/seed-seller-applications.js",
+    "seed-feedback": "node scripts/seed-customer-feedback.js",
+    "enrich": "node scripts/enrich-db.js"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
