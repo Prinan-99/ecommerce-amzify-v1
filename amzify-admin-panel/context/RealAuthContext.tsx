@@ -35,7 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (token) {
         try {
           const response = await adminApiService.getCurrentUser();
-          setUser(response.user);
+          setUser(response.data?.user || null);
         } catch (error) {
           // Token might be expired or backend unreachable, clear it
           console.warn('Auth check failed:', error);

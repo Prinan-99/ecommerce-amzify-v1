@@ -81,7 +81,7 @@ const LoginPortal: React.FC = () => {
   };
 
   const handleDemoLogin = () => {
-    setEmail('seller@example.com');
+    setEmail('seller@amzify.com');
     setPassword('seller123');
     clearError();
   };

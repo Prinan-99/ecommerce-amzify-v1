@@ -3,7 +3,7 @@ import {
   BarChart3, Users, Settings, Shield, Activity, AlertTriangle, 
   Package, ShoppingCart, FileText, LogOut, User, CheckCircle, XCircle,
   Eye, Edit, Trash2, Search, Filter, Download, RefreshCw, Loader2,
-  TrendingUp, DollarSign, Clock, Ban, Truck, MapPin, Navigation, MessageSquare, Store
+  TrendingUp, DollarSign, Clock, Ban, Truck, MapPin, Navigation, MessageSquare, Store, X
 } from 'lucide-react';
 import { useAuth } from './context/RealAuthContext';
 import LoginPortal from './components/LoginPortal';
@@ -24,7 +24,6 @@ const App: React.FC = () => {
   const [sellers, setSellers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
-  const [feedback, setFeedback] = useState<any[]>([]);
 
   // Load admin data
   useEffect(() => {
@@ -39,13 +38,12 @@ const App: React.FC = () => {
   const loadAdminData = async () => {
     try {
       setIsDataLoading(true);
-      const [statsResponse, usersResponse, sellersResponse, productsResponse, ordersResponse, feedbackResponse] = await Promise.all([
+      const [statsResponse, usersResponse, sellersResponse, productsResponse, ordersResponse] = await Promise.all([
         adminApiService.getSystemStats().catch(() => null),
         adminApiService.getAllUsers().catch(() => ({ users: [] })),
-        adminApiService.getPendingSellers().catch(() => ({ sellers: [] })),
+        adminApiService.getAllSellers().catch(() => ({ sellers: [] })),
         adminApiService.getAllProducts({ status: 'pending_approval' }).catch(() => ({ products: [] })),
-        adminApiService.getAllOrders().catch(() => ({ orders: [] })),
-        adminApiService.getAllFeedback({ status: 'new' }).catch(() => ({ feedback: [] }))
+        adminApiService.getAllOrders().catch(() => ({ orders: [] }))
       ]);
 
       setStats(statsResponse?.overview || statsResponse);
@@ -53,7 +51,7 @@ const App: React.FC = () => {
       setSellers(sellersResponse.sellers || []);
       setProducts(productsResponse.products || []);
       setOrders(ordersResponse.orders || []);
-      setFeedback(feedbackResponse.feedback || []);
+      // Feedback is loaded independently in FeedbackTab component
     } catch (error) {
       console.error('Load admin data error:', error);
     } finally {
@@ -86,6 +84,35 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('Approve seller error:', error);
     }
+  };
+
+  const handleUpdateUser = (userId: string, updates: Record<string, any>) => {
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, ...updates } : u)));
+  };
+
+  const handleToggleUserStatus = (userId: string) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, is_active: !u.is_active } : u))
+    );
+  };
+
+  const handleUpdateSeller = (sellerId: string, updates: Record<string, any>) => {
+    setSellers((prev) => prev.map((s) => (s.id === sellerId ? { ...s, ...updates } : s)));
+  };
+
+  const handleToggleSellerStatus = (sellerId: string) => {
+    setSellers((prev) =>
+      prev.map((s) => {
+        if (s.id !== sellerId) return s;
+        const isActive = s.is_active ?? (s.status ? s.status.toLowerCase() === 'active' : false);
+        const nextActive = !isActive;
+        return {
+          ...s,
+          is_active: nextActive,
+          status: nextActive ? 'ACTIVE' : 'SUSPENDED'
+        };
+      })
+    );
   };
 
   const handleRejectSeller = async (sellerId: string) => {
@@ -192,12 +219,28 @@ const App: React.FC = () => {
           ) : (
             <>
               {activeTab === 'dashboard' && <DashboardTab stats={stats} />}
-              {activeTab === 'users' && <UsersTab users={users} onRefresh={loadAdminData} />}
-              {activeTab === 'sellers' && <SellersTab sellers={sellers} onApprove={handleApproveSeller} onReject={handleRejectSeller} onRefresh={loadAdminData} />}
+              {activeTab === 'users' && (
+                <UsersTab
+                  users={users}
+                  onRefresh={loadAdminData}
+                  onUpdate={handleUpdateUser}
+                  onToggleStatus={handleToggleUserStatus}
+                />
+              )}
+              {activeTab === 'sellers' && (
+                <SellersTab
+                  sellers={sellers}
+                  onApprove={handleApproveSeller}
+                  onReject={handleRejectSeller}
+                  onRefresh={loadAdminData}
+                  onUpdate={handleUpdateSeller}
+                  onToggleStatus={handleToggleSellerStatus}
+                />
+              )}
               {activeTab === 'seller-applications' && <SellerApplications />}
               {activeTab === 'products' && <ProductsTab products={products} onApprove={handleApproveProduct} onReject={handleRejectProduct} onRefresh={loadAdminData} />}
               {activeTab === 'orders' && <OrdersTab orders={orders} onRefresh={loadAdminData} />}
-              {activeTab === 'feedback' && <FeedbackTab feedback={feedback} onRefresh={loadAdminData} />}
+              {activeTab === 'feedback' && <FeedbackTab onRefresh={loadAdminData} />}
               {activeTab === 'logistics' && <LogisticsTab onRefresh={loadAdminData} />}
               {activeTab === 'settings' && <SettingsTab />}
             </>
@@ -299,75 +342,321 @@ const DashboardTab: React.FC<{ stats: any }> = ({ stats }) => {
 };
 
 // Users Tab Component
-const UsersTab: React.FC<{ users: any[]; onRefresh: () => void }> = ({ users, onRefresh }) => {
+const UsersTab: React.FC<{
+  users: any[];
+  onRefresh: () => void;
+  onUpdate: (id: string, updates: Record<string, any>) => void;
+  onToggleStatus: (id: string) => void;
+}> = ({ users, onRefresh, onUpdate, onToggleStatus }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [hasSearched, setHasSearched] = useState(false);
+  const [viewUser, setViewUser] = useState<any | null>(null);
+  const [editUser, setEditUser] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', email: '', is_active: true });
+
+  const baseUsers = users.filter((u) => {
+    const role = (u.role || '').toLowerCase();
+    return role !== 'seller' && role !== 'admin';
+  });
+
+  const filteredUsers = baseUsers.filter((user) => {
+    const name = user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim();
+    const email = (user.email || '').toLowerCase();
+    const role = (user.role || '').toLowerCase();
+    const query = searchQuery.trim().toLowerCase();
+    const matchesQuery = query.length === 0 || name.toLowerCase().includes(query) || email.includes(query);
+    const matchesRole = roleFilter === 'all' || role === roleFilter;
+    return matchesQuery && matchesRole;
+  });
+
+  const handleSearch = () => {
+    setHasSearched(true);
+  };
+
+  const openEdit = (user: any) => {
+    setEditUser(user);
+    setEditForm({
+      first_name: user.first_name || (user.name ? user.name.split(' ')[0] : ''),
+      last_name: user.last_name || (user.name ? user.name.split(' ').slice(1).join(' ') : ''),
+      email: user.email || '',
+      is_active: user.is_active ?? false
+    });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editUser) return;
+    onUpdate(editUser.id, {
+      first_name: editForm.first_name,
+      last_name: editForm.last_name,
+      name: `${editForm.first_name} ${editForm.last_name}`.trim(),
+      email: editForm.email,
+      is_active: editForm.is_active
+    });
+    setEditUser(null);
+  };
+
+  const handleCSVDownload = () => {
+    if (!hasSearched || filteredUsers.length === 0) return;
+    const headers = ['Name', 'Email', 'Role', 'Status'];
+    const rows = filteredUsers.map((u) => [
+      u.name || `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+      u.email,
+      u.role,
+      u.is_active ? 'Active' : 'Inactive'
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `users-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExcelDownload = () => {
+    if (!hasSearched || filteredUsers.length === 0) return;
+    const html = `
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #4CAF50; color: white; font-weight: bold; }
+            tr:nth-child(even) { background-color: #f2f2f2; }
+          </style>
+        </head>
+        <body>
+          <h2>Users Report - ${new Date().toLocaleDateString()}</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredUsers
+                .map((u) => {
+                  const name = u.name || `${u.first_name || ''} ${u.last_name || ''}`.trim();
+                  return `
+                    <tr>
+                      <td>${name}</td>
+                      <td>${u.email}</td>
+                      <td>${u.role}</td>
+                      <td>${u.is_active ? 'Active' : 'Inactive'}</td>
+                    </tr>
+                  `;
+                })
+                .join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `users-${new Date().toISOString().slice(0, 10)}.xls`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="bg-white rounded-[4rem] border border-slate-100 shadow-sm p-12">
       <div className="flex items-center justify-between mb-8">
-        <h3 className="text-3xl font-black tracking-tighter">User Management</h3>
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search users..."
-              className="pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-red-500 text-sm"
-            />
-          </div>
-          <button className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-200 transition-all">
-            <Filter className="w-4 h-4 inline mr-2" />
-            Filter
+        <div>
+          <h3 className="text-3xl font-black tracking-tighter">User Management</h3>
+          <p className="text-slate-500 text-sm">Search to view users. Sellers are listed under the Sellers tab.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleCSVDownload}
+            disabled={!hasSearched || filteredUsers.length === 0}
+            className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4 inline mr-2" />
+            Download CSV
+          </button>
+          <button
+            onClick={handleExcelDownload}
+            disabled={!hasSearched || filteredUsers.length === 0}
+            className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4 inline mr-2" />
+            Download Excel
           </button>
         </div>
       </div>
 
-      {users.length === 0 ? (
+      <div className="flex items-center gap-4 mb-8">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-red-500 text-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+          />
+        </div>
+        <select
+          className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-red-500"
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+        >
+          <option value="all">All Roles</option>
+          <option value="customer">Customer</option>
+          <option value="support">Support</option>
+        </select>
+        <button
+          onClick={handleSearch}
+          className="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-all"
+        >
+          Search
+        </button>
+      </div>
+
+      {!hasSearched ? (
+        <div className="text-center py-16">
+          <Search className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+          <h4 className="text-xl font-bold text-slate-900 mb-2">Search to view users</h4>
+          <p className="text-slate-600">Click Search to load and view user data</p>
+        </div>
+      ) : filteredUsers.length === 0 ? (
         <div className="text-center py-16">
           <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
           <h4 className="text-xl font-bold text-slate-900 mb-2">No users found</h4>
-          <p className="text-slate-600">Users will appear here as they register</p>
+          <p className="text-slate-600">Try adjusting your search or filters</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {users.map((user) => (
-            <div key={user.id} className="border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition-all">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center">
-                    <User className="w-6 h-6 text-slate-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900">{user.first_name} {user.last_name}</h4>
-                    <p className="text-slate-600 text-sm">{user.email}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                        user.role === 'customer' ? 'bg-blue-100 text-blue-800' :
-                        user.role === 'seller' ? 'bg-green-100 text-green-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {user.role}
-                      </span>
-                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                        user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {user.is_active ? 'Active' : 'Inactive'}
-                      </span>
+          {filteredUsers.map((user) => {
+            const name = user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim();
+            return (
+              <div key={user.id} className="border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition-all">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center">
+                      <User className="w-6 h-6 text-slate-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900">{name || 'Unknown User'}</h4>
+                      <p className="text-slate-600 text-sm">{user.email}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                          user.role === 'customer' ? 'bg-blue-100 text-blue-800' :
+                          user.role === 'support' ? 'bg-purple-100 text-purple-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {user.role}
+                        </span>
+                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                          user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {user.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all">
-                    <Eye className="w-4 h-4" />
-                  </button>
-                  <button className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-all">
-                    <Ban className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setViewUser(user)}
+                      className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all"
+                      title="View"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => openEdit(user)}
+                      className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all"
+                      title="Edit"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => onToggleStatus(user.id)}
+                      className={`p-2 rounded-lg transition-all ${
+                        user.is_active ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200'
+                      }`}
+                      title={user.is_active ? 'Disable' : 'Enable'}
+                    >
+                      <Ban className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      )}
+
+      {viewUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-xl font-black">User Details</h4>
+              <button onClick={() => setViewUser(null)} className="text-slate-400 hover:text-slate-700">✕</button>
             </div>
-          ))}
+            <div className="space-y-2 text-sm text-slate-700">
+              <div><span className="font-semibold">Name:</span> {viewUser.name || `${viewUser.first_name || ''} ${viewUser.last_name || ''}`.trim()}</div>
+              <div><span className="font-semibold">Email:</span> {viewUser.email}</div>
+              <div><span className="font-semibold">Role:</span> {viewUser.role}</div>
+              <div><span className="font-semibold">Status:</span> {viewUser.is_active ? 'Active' : 'Inactive'}</div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button onClick={() => setViewUser(null)} className="px-4 py-2 bg-slate-100 rounded-lg">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-xl font-black">Edit User</h4>
+              <button onClick={() => setEditUser(null)} className="text-slate-400 hover:text-slate-700">✕</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                className="border border-slate-200 rounded-lg px-3 py-2"
+                placeholder="First name"
+                value={editForm.first_name}
+                onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+              />
+              <input
+                className="border border-slate-200 rounded-lg px-3 py-2"
+                placeholder="Last name"
+                value={editForm.last_name}
+                onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+              />
+              <input
+                className="border border-slate-200 rounded-lg px-3 py-2 md:col-span-2"
+                placeholder="Email"
+                value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+              />
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={editForm.is_active}
+                  onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })}
+                />
+                Active
+              </label>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <button onClick={() => setEditUser(null)} className="px-4 py-2 bg-slate-100 rounded-lg">Cancel</button>
+              <button onClick={handleSaveEdit} className="px-4 py-2 bg-red-600 text-white rounded-lg">Save</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -375,74 +664,365 @@ const UsersTab: React.FC<{ users: any[]; onRefresh: () => void }> = ({ users, on
 };
 
 // Sellers Tab Component
-const SellersTab: React.FC<{ sellers: any[]; onApprove: (id: string) => void; onReject: (id: string) => void; onRefresh: () => void }> = ({ sellers, onApprove, onReject, onRefresh }) => {
+const SellersTab: React.FC<{
+  sellers: any[];
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
+  onRefresh: () => void;
+  onUpdate: (id: string, updates: Record<string, any>) => void;
+  onToggleStatus: (id: string) => void;
+}> = ({ sellers, onApprove, onReject, onRefresh, onUpdate, onToggleStatus }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [hasSearched, setHasSearched] = useState(false);
+  const [viewSeller, setViewSeller] = useState<any | null>(null);
+  const [editSeller, setEditSeller] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', email: '', company_name: '', phone: '', is_active: true });
+
+  const filteredSellers = sellers.filter((seller) => {
+    const name = seller.name || `${seller.first_name || ''} ${seller.last_name || ''}`.trim();
+    const email = (seller.email || '').toLowerCase();
+    const company = (seller.company_name || '').toLowerCase();
+    const query = searchQuery.trim().toLowerCase();
+    const matchesQuery = query.length === 0 || name.toLowerCase().includes(query) || email.includes(query) || company.includes(query);
+    const isActive = seller.is_active ?? (seller.status ? seller.status.toLowerCase() === 'active' : false);
+    const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' && isActive) || (statusFilter === 'inactive' && !isActive);
+    return matchesQuery && matchesStatus;
+  });
+
+  const handleSearch = () => {
+    setHasSearched(true);
+  };
+
+  const openEdit = (seller: any) => {
+    const name = seller.name || `${seller.first_name || ''} ${seller.last_name || ''}`.trim();
+    setEditSeller(seller);
+    setEditForm({
+      name,
+      email: seller.email || '',
+      company_name: seller.company_name || seller.storeName || '',
+      phone: seller.phone || '',
+      is_active: seller.is_active ?? (seller.status ? seller.status.toLowerCase() === 'active' : false)
+    });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editSeller) return;
+    const [first_name, ...rest] = editForm.name.split(' ');
+    const last_name = rest.join(' ');
+    onUpdate(editSeller.id, {
+      name: editForm.name,
+      first_name,
+      last_name,
+      email: editForm.email,
+      company_name: editForm.company_name,
+      phone: editForm.phone,
+      is_active: editForm.is_active,
+      status: editForm.is_active ? 'ACTIVE' : 'SUSPENDED'
+    });
+    setEditSeller(null);
+  };
+
+  const handleCSVDownload = () => {
+    if (!hasSearched || filteredSellers.length === 0) return;
+    const headers = ['Name', 'Email', 'Company', 'Status', 'Approved', 'Verified'];
+    const rows = filteredSellers.map((s) => [
+      s.name || `${s.first_name || ''} ${s.last_name || ''}`.trim(),
+      s.email,
+      s.company_name || 'N/A',
+      s.is_active ? 'Active' : 'Inactive',
+      s.seller_approved ? 'Approved' : 'Pending',
+      s.is_verified ? 'Verified' : 'Unverified'
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `sellers-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExcelDownload = () => {
+    if (!hasSearched || filteredSellers.length === 0) return;
+    const html = `
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #4CAF50; color: white; font-weight: bold; }
+            tr:nth-child(even) { background-color: #f2f2f2; }
+          </style>
+        </head>
+        <body>
+          <h2>Sellers Report - ${new Date().toLocaleDateString()}</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Company</th>
+                <th>Status</th>
+                <th>Approved</th>
+                <th>Verified</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredSellers
+                .map((s) => {
+                  const name = s.name || `${s.first_name || ''} ${s.last_name || ''}`.trim();
+                  return `
+                    <tr>
+                      <td>${name}</td>
+                      <td>${s.email}</td>
+                      <td>${s.company_name || 'N/A'}</td>
+                      <td>${s.is_active ? 'Active' : 'Inactive'}</td>
+                      <td>${s.seller_approved ? 'Approved' : 'Pending'}</td>
+                      <td>${s.is_verified ? 'Verified' : 'Unverified'}</td>
+                    </tr>
+                  `;
+                })
+                .join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `sellers-${new Date().toISOString().slice(0, 10)}.xls`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="bg-white rounded-[4rem] border border-slate-100 shadow-sm p-12">
       <div className="flex items-center justify-between mb-8">
-        <h3 className="text-3xl font-black tracking-tighter">Seller Management</h3>
-        <button 
-          onClick={onRefresh}
-          className="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-all"
+        <div>
+          <h3 className="text-3xl font-black tracking-tighter">Seller Management</h3>
+          <p className="text-slate-500 text-sm">Search to view sellers and download reports.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleCSVDownload}
+            disabled={!hasSearched || filteredSellers.length === 0}
+            className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4 inline mr-2" />
+            Download CSV
+          </button>
+          <button
+            onClick={handleExcelDownload}
+            disabled={!hasSearched || filteredSellers.length === 0}
+            className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4 inline mr-2" />
+            Download Excel
+          </button>
+          <button
+            onClick={onRefresh}
+            className="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-all"
+          >
+            <RefreshCw className="w-4 h-4 inline mr-2" />
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-4 mb-8">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search by name, email, or company..."
+            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-red-500 text-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+          />
+        </div>
+        <select
+          className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-red-500"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
         >
-          <RefreshCw className="w-4 h-4 inline mr-2" />
-          Refresh
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+        <button
+          onClick={handleSearch}
+          className="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-all"
+        >
+          Search
         </button>
       </div>
 
-      {sellers.length === 0 ? (
+      {!hasSearched ? (
+        <div className="text-center py-16">
+          <Search className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+          <h4 className="text-xl font-bold text-slate-900 mb-2">Search to view sellers</h4>
+          <p className="text-slate-600">Click Search to load and view seller data</p>
+        </div>
+      ) : filteredSellers.length === 0 ? (
         <div className="text-center py-16">
           <Package className="w-16 h-16 text-slate-300 mx-auto mb-4" />
           <h4 className="text-xl font-bold text-slate-900 mb-2">No sellers found</h4>
-          <p className="text-slate-600">Seller applications will appear here for review</p>
+          <p className="text-slate-600">Try adjusting your search or filters</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {sellers.map((seller) => (
-            <div key={seller.id} className="border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition-all">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <Package className="w-6 h-6 text-green-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900">{seller.first_name} {seller.last_name}</h4>
-                    <p className="text-slate-600 text-sm">{seller.email}</p>
-                    <p className="text-slate-500 text-xs">{seller.company_name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                        seller.seller_approved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {seller.seller_approved ? 'Approved' : 'Pending'}
-                      </span>
+          {filteredSellers.map((seller) => {
+            const name = seller.name || `${seller.first_name || ''} ${seller.last_name || ''}`.trim();
+            return (
+              <div key={seller.id} className="border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition-all">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                      <Package className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900">{name || 'Unknown Seller'}</h4>
+                      <p className="text-slate-600 text-sm">{seller.email}</p>
+                      <p className="text-slate-500 text-xs">{seller.company_name || 'N/A'}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                          seller.seller_approved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {seller.seller_approved ? 'Approved' : 'Pending'}
+                        </span>
+                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                          seller.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {seller.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {!seller.seller_approved && (
-                    <>
-                      <button 
-                        onClick={() => onApprove(seller.id)}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-all"
-                      >
-                        <CheckCircle className="w-4 h-4 inline mr-1" />
-                        Approve
-                      </button>
-                      <button 
-                        onClick={() => onReject(seller.id)}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-all"
-                      >
-                        <XCircle className="w-4 h-4 inline mr-1" />
-                        Reject
-                      </button>
-                    </>
-                  )}
-                  <button className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all">
-                    <Eye className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {!seller.seller_approved && (
+                      <>
+                        <button
+                          onClick={() => onApprove(seller.id)}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-all"
+                        >
+                          <CheckCircle className="w-4 h-4 inline mr-1" />
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => onReject(seller.id)}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-all"
+                        >
+                          <XCircle className="w-4 h-4 inline mr-1" />
+                          Reject
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => setViewSeller(seller)}
+                      className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all"
+                      title="View"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => openEdit(seller)}
+                      className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all"
+                      title="Edit"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => onToggleStatus(seller.id)}
+                      className={`p-2 rounded-lg transition-all ${
+                        (seller.is_active ?? (seller.status ? seller.status.toLowerCase() === 'active' : false))
+                          ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                          : 'bg-green-100 text-green-700 hover:bg-green-200'
+                      }`}
+                      title={(seller.is_active ?? (seller.status ? seller.status.toLowerCase() === 'active' : false)) ? 'Disable' : 'Enable'}
+                    >
+                      <Ban className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      )}
+
+      {viewSeller && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-xl font-black">Seller Details</h4>
+              <button onClick={() => setViewSeller(null)} className="text-slate-400 hover:text-slate-700">✕</button>
             </div>
-          ))}
+            <div className="space-y-2 text-sm text-slate-700">
+              <div><span className="font-semibold">Name:</span> {viewSeller.name || `${viewSeller.first_name || ''} ${viewSeller.last_name || ''}`.trim()}</div>
+              <div><span className="font-semibold">Email:</span> {viewSeller.email}</div>
+              <div><span className="font-semibold">Company:</span> {viewSeller.company_name || viewSeller.storeName || 'N/A'}</div>
+              <div><span className="font-semibold">Phone:</span> {viewSeller.phone || 'N/A'}</div>
+              <div><span className="font-semibold">Status:</span> {(viewSeller.is_active ?? (viewSeller.status ? viewSeller.status.toLowerCase() === 'active' : false)) ? 'Active' : 'Inactive'}</div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button onClick={() => setViewSeller(null)} className="px-4 py-2 bg-slate-100 rounded-lg">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editSeller && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-xl font-black">Edit Seller</h4>
+              <button onClick={() => setEditSeller(null)} className="text-slate-400 hover:text-slate-700">✕</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                className="border border-slate-200 rounded-lg px-3 py-2 md:col-span-2"
+                placeholder="Full name"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              />
+              <input
+                className="border border-slate-200 rounded-lg px-3 py-2 md:col-span-2"
+                placeholder="Email"
+                value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+              />
+              <input
+                className="border border-slate-200 rounded-lg px-3 py-2"
+                placeholder="Company"
+                value={editForm.company_name}
+                onChange={(e) => setEditForm({ ...editForm, company_name: e.target.value })}
+              />
+              <input
+                className="border border-slate-200 rounded-lg px-3 py-2"
+                placeholder="Phone"
+                value={editForm.phone}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+              />
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={editForm.is_active}
+                  onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })}
+                />
+                Active
+              </label>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <button onClick={() => setEditSeller(null)} className="px-4 py-2 bg-slate-100 rounded-lg">Cancel</button>
+              <button onClick={handleSaveEdit} className="px-4 py-2 bg-red-600 text-white rounded-lg">Save</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -983,19 +1563,87 @@ const SettingsTab: React.FC = () => {
 };
 
 // Feedback Tab Component
-const FeedbackTab: React.FC<{ feedback: any[]; onRefresh: () => void }> = ({ feedback, onRefresh }) => {
+const FeedbackTab: React.FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
   const [selectedFeedback, setSelectedFeedback] = useState<any>(null);
   const [responseText, setResponseText] = useState('');
   const [isResponding, setIsResponding] = useState(false);
+  const [allFeedback, setAllFeedback] = useState<any[]>([]);
+  const [stats, setStats] = useState({ new: 0, under_review: 0, responded: 0, avg_rating: 0 });
+  const [loading, setLoading] = useState(false);
+
+  // Fetch all feedback on mount to get complete stats
+  useEffect(() => {
+    fetchAllFeedback();
+    fetchFeedbackStats();
+  }, []);
+
+  const fetchAllFeedback = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('http://localhost:5000/api/admin/feedback', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch feedback');
+      }
+      
+      const data = await response.json();
+      setAllFeedback(data.feedback || []);
+    } catch (error) {
+      console.error('Error fetching feedback:', error);
+      setAllFeedback([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchFeedbackStats = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('http://localhost:5000/api/admin/feedback/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch stats');
+      }
+      
+      const data = await response.json();
+      setStats(data);
+    } catch (error) {
+      console.error('Error fetching feedback stats:', error);
+    }
+  };
 
   const handleRespond = async (feedbackId: string) => {
     if (!responseText.trim()) return;
 
     setIsResponding(true);
     try {
-      await adminApiService.respondToFeedback(feedbackId, responseText);
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`http://localhost:5000/api/admin/feedback/${feedbackId}/respond`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ response: responseText })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send response');
+      }
+
       setSelectedFeedback(null);
       setResponseText('');
+      fetchAllFeedback(); // Refresh data
+      fetchFeedbackStats(); // Refresh stats
       onRefresh();
     } catch (error) {
       console.error('Respond to feedback error:', error);
@@ -1007,13 +1655,31 @@ const FeedbackTab: React.FC<{ feedback: any[]; onRefresh: () => void }> = ({ fee
 
   const handleUpdateStatus = async (feedbackId: string, status: string) => {
     try {
-      await adminApiService.updateFeedbackStatus(feedbackId, status);
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`http://localhost:5000/api/admin/feedback/${feedbackId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+
+      fetchAllFeedback(); // Refresh data
+      fetchFeedbackStats(); // Refresh stats
       onRefresh();
     } catch (error) {
       console.error('Update feedback status error:', error);
       alert('Failed to update status');
     }
   };
+
+  // Filter out responded feedback from the display list
+  const displayFeedback = allFeedback.filter(f => f.status !== 'responded');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -1059,7 +1725,7 @@ const FeedbackTab: React.FC<{ feedback: any[]; onRefresh: () => void }> = ({ fee
         <div className="flex items-center justify-between mb-8">
           <h3 className="text-3xl font-black tracking-tighter">Customer Feedback</h3>
           <button 
-            onClick={onRefresh}
+            onClick={fetchAllFeedback}
             className="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-all"
           >
             <RefreshCw className="w-4 h-4 inline mr-2" />
@@ -1072,44 +1738,47 @@ const FeedbackTab: React.FC<{ feedback: any[]; onRefresh: () => void }> = ({ fee
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-2xl text-white">
             <div className="flex items-center justify-between mb-2">
               <MessageSquare className="w-8 h-8" />
-              <span className="text-2xl font-black">{feedback.filter(f => f.status === 'new').length}</span>
+              <span className="text-2xl font-black">{stats.new}</span>
             </div>
             <p className="text-blue-100 text-sm">New Feedback</p>
           </div>
           <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 p-6 rounded-2xl text-white">
             <div className="flex items-center justify-between mb-2">
               <Eye className="w-8 h-8" />
-              <span className="text-2xl font-black">{feedback.filter(f => f.status === 'reviewed').length}</span>
+              <span className="text-2xl font-black">{stats.under_review}</span>
             </div>
             <p className="text-yellow-100 text-sm">Under Review</p>
           </div>
           <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-2xl text-white">
             <div className="flex items-center justify-between mb-2">
               <CheckCircle className="w-8 h-8" />
-              <span className="text-2xl font-black">{feedback.filter(f => f.status === 'responded').length}</span>
+              <span className="text-2xl font-black">{stats.responded}</span>
             </div>
             <p className="text-green-100 text-sm">Responded</p>
           </div>
           <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-2xl text-white">
             <div className="flex items-center justify-between mb-2">
               <TrendingUp className="w-8 h-8" />
-              <span className="text-2xl font-black">
-                {feedback.length > 0 ? (feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length).toFixed(1) : '0.0'}
-              </span>
+              <span className="text-2xl font-black">{stats.avg_rating}</span>
             </div>
             <p className="text-purple-100 text-sm">Avg Rating</p>
           </div>
         </div>
 
-        {feedback.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-16">
+            <RefreshCw className="w-16 h-16 text-slate-300 mx-auto mb-4 animate-spin" />
+            <h4 className="text-xl font-bold text-slate-900 mb-2">Loading feedback...</h4>
+          </div>
+        ) : displayFeedback.length === 0 ? (
           <div className="text-center py-16">
             <MessageSquare className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <h4 className="text-xl font-bold text-slate-900 mb-2">No feedback found</h4>
-            <p className="text-slate-600">Customer feedback will appear here</p>
+            <h4 className="text-xl font-bold text-slate-900 mb-2">No pending feedback</h4>
+            <p className="text-slate-600">All feedback has been responded to or there are no new submissions</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {feedback.map((item) => (
+            {displayFeedback.map((item) => (
               <div key={item.id} className="border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition-all">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-start gap-4">
@@ -1132,15 +1801,6 @@ const FeedbackTab: React.FC<{ feedback: any[]; onRefresh: () => void }> = ({ fee
                         <span className="text-sm text-slate-600">({item.rating}/5)</span>
                       </div>
                       <p className="text-slate-700 leading-relaxed">{item.message}</p>
-                      {item.admin_response && (
-                        <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl">
-                          <p className="text-sm font-medium text-green-800 mb-1">Admin Response:</p>
-                          <p className="text-green-700">{item.admin_response}</p>
-                          <p className="text-xs text-green-600 mt-2">
-                            Responded on {new Date(item.responded_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                      )}
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
@@ -1162,14 +1822,6 @@ const FeedbackTab: React.FC<{ feedback: any[]; onRefresh: () => void }> = ({ fee
                           className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-medium hover:bg-green-200 transition-all"
                         >
                           Respond
-                        </button>
-                      )}
-                      {item.status === 'responded' && (
-                        <button
-                          onClick={() => handleUpdateStatus(item.id, 'closed')}
-                          className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-all"
-                        >
-                          Close
                         </button>
                       )}
                     </div>
