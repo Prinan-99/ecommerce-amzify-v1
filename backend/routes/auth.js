@@ -30,6 +30,9 @@ const generateTokens = (userId) => {
   return { accessToken, refreshToken };
 };
 
+const PASSWORD_RESET_EXPIRES_IN = process.env.PASSWORD_RESET_EXPIRES_IN || '15m';
+const PASSWORD_RESET_SECRET = process.env.JWT_RESET_SECRET || process.env.JWT_SECRET;
+
 // Send OTP for email verification
 router.post('/send-otp', [
   body('email').isEmail().normalizeEmail(),
@@ -129,6 +132,93 @@ router.post('/verify-otp', [
   } catch (error) {
     console.error('Verify OTP error:', error);
     res.status(500).json({ error: 'OTP verification failed' });
+  }
+});
+
+// Forgot Password - Send reset link
+router.post('/forgot-password', [
+  body('email').isEmail().normalizeEmail()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email } = req.body;
+
+    // Always respond success to prevent user enumeration
+    const user = await prisma.users.findUnique({ where: { email } });
+    if (!user) {
+      return res.json({ success: true, message: 'If the email exists, a reset link has been sent.' });
+    }
+
+    const resetToken = jwt.sign(
+      { email, purpose: 'password_reset' },
+      PASSWORD_RESET_SECRET,
+      { expiresIn: PASSWORD_RESET_EXPIRES_IN }
+    );
+
+    const frontendBase = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const resetLink = `${frontendBase}/?resetToken=${encodeURIComponent(resetToken)}`;
+
+    const emailSent = await emailService.sendPasswordResetLink(email, resetLink);
+    if (!emailSent) {
+      return res.status(500).json({ error: 'Failed to send reset email' });
+    }
+
+    return res.json({ success: true, message: 'If the email exists, a reset link has been sent.' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Failed to process password reset request' });
+  }
+});
+
+// Reset Password - Verify token and update password
+router.post('/reset-password', [
+  body('token').notEmpty(),
+  body('newPassword').isLength({ min: 6 })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { token, newPassword } = req.body;
+
+    let payload;
+    try {
+      payload = jwt.verify(token, PASSWORD_RESET_SECRET);
+    } catch (err) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    if (!payload || payload.purpose !== 'password_reset' || !payload.email) {
+      return res.status(400).json({ error: 'Invalid reset token' });
+    }
+
+    const user = await prisma.users.findUnique({ where: { email: payload.email } });
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid reset token' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.users.update({
+        where: { id: user.id },
+        data: { password_hash: passwordHash }
+      });
+
+      // Invalidate existing refresh tokens after password reset
+      await tx.refresh_tokens.deleteMany({ where: { user_id: user.id } });
+    });
+
+    res.json({ success: true, message: 'Password reset successful' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Password reset failed' });
   }
 });
 

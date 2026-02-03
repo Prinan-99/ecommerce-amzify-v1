@@ -232,6 +232,11 @@ const App: React.FC = () => {
     }).format(amount);
   };
 
+  const resetTokenParam = new URLSearchParams(window.location.search).get('resetToken');
+  if (resetTokenParam) {
+    return <LoginPortal />;
+  }
+
   // Access control - allow guest browsing, require login only for checkout/profile
   if (!isAuthenticated) {
     // Show login portal only if user is trying to access protected features
