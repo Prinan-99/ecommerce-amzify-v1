@@ -652,4 +652,151 @@ router.patch('/:id/approve', authenticateToken, requireAdmin, async (req, res) =
   }
 });
 
+// Get top categories with product counts
+router.get('/categories/top', async (req, res) => {
+  try {
+    const topCategories = await prisma.categories.findMany({
+      where: {
+        products: {
+          some: {
+            status: 'active'
+          }
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        _count: {
+          select: { products: { where: { status: 'active' } } }
+        }
+      },
+      orderBy: {
+        products: {
+          _count: 'desc'
+        }
+      },
+      take: 8
+    });
+
+    const formattedCategories = topCategories.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      slug: cat.slug,
+      product_count: cat._count.products
+    }));
+
+    res.json({ categories: formattedCategories });
+  } catch (error) {
+    console.error('Get top categories error:', error);
+    res.status(500).json({ error: 'Failed to fetch top categories' });
+  }
+});
+
+// Get seller details by ID
+router.get('/sellers/:sellerId', async (req, res) => {
+  try {
+    const { sellerId } = req.params;
+
+    const seller = await prisma.users.findUnique({
+      where: { id: sellerId },
+      select: {
+        id: true,
+        first_name: true,
+        last_name: true,
+        email: true,
+        phone: true,
+        seller_profiles: {
+          select: {
+            id: true,
+            company_name: true,
+            business_type: true,
+            description: true,
+            logo: true,
+            banner: true,
+            address: true,
+            city: true,
+            state: true,
+            pincode: true,
+            country: true
+          }
+        }
+      }
+    });
+
+    if (!seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+
+    res.json({ seller });
+  } catch (error) {
+    console.error('Get seller details error:', error);
+    res.status(500).json({ error: 'Failed to fetch seller details' });
+  }
+});
+
+// Get all products by a specific seller
+router.get('/sellers/:sellerId/products', async (req, res) => {
+  try {
+    const { sellerId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
+
+    const whereClause = {
+      seller_id: sellerId,
+      status: 'active'
+    };
+
+    const [products, total] = await Promise.all([
+      prisma.products.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          price: true,
+          images: true,
+          stock_quantity: true,
+          created_at: true,
+          categories: {
+            select: { name: true }
+          },
+          users: {
+            select: {
+              first_name: true,
+              last_name: true
+            }
+          }
+        },
+        orderBy: { created_at: 'desc' },
+        skip: offset,
+        take: limit
+      }),
+      prisma.products.count({ where: whereClause })
+    ]);
+
+    const formattedProducts = products.map(product => ({
+      ...product,
+      category_name: product.categories?.name,
+      seller_name: product.users ? `${product.users.first_name} ${product.users.last_name}` : null,
+      categories: undefined,
+      users: undefined
+    }));
+
+    res.json({
+      products: formattedProducts,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get seller products error:', error);
+    res.status(500).json({ error: 'Failed to fetch seller products' });
+  }
+});
+
 export default router;

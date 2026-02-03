@@ -9,6 +9,12 @@ interface RegisterData extends LoginCredentials {
   firstName: string;
   lastName: string;
   phone?: string;
+  otp?: string;
+}
+
+interface ForgotPasswordResponse {
+  success: boolean;
+  message: string;
 }
 
 class CustomerApiService {
@@ -73,6 +79,34 @@ class CustomerApiService {
     return this.request('/auth/me');
   }
 
+  async sendOtp(email: string, type: 'verification' | 'password_reset') {
+    return this.request('/auth/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, type })
+    });
+  }
+
+  async verifyOtp(email: string, otp: string, type: 'verification' | 'password_reset') {
+    return this.request('/auth/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp, type })
+    });
+  }
+
+  async requestPasswordReset(email: string): Promise<ForgotPasswordResponse> {
+    return this.request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    return this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword })
+    });
+  }
+
   async logout() {
     try {
       await this.request('/auth/logout', { method: 'POST' });
@@ -97,16 +131,6 @@ class CustomerApiService {
     localStorage.setItem('refreshToken', data.refreshToken);
     
     return data;
-  }
-
-  // Products endpoints
-  async getProducts(params?: { category?: string; search?: string; page?: number; limit?: number }) {
-    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
-    return this.request(`/products${queryString}`);
-  }
-
-  async getProduct(id: string) {
-    return this.request(`/products/${id}`);
   }
 
   // Cart endpoints
@@ -148,6 +172,39 @@ class CustomerApiService {
 
   async getOrder(id: string) {
     return this.request(`/orders/${id}`);
+  }
+
+  // Products endpoints
+  async getTopCategories() {
+    return this.request('/products/categories/top');
+  }
+
+  async getProducts(page: number = 1, limit: number = 20, filters?: any) {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      ...(filters?.category && { category: filters.category }),
+      ...(filters?.search && { search: filters.search }),
+      ...(filters?.sort && { sort: filters.sort }),
+      ...(filters?.order && { order: filters.order })
+    });
+    return this.request(`/products?${params.toString()}`);
+  }
+
+  async getProduct(id: string) {
+    return this.request(`/products/${id}`);
+  }
+
+  async getSellerDetails(sellerId: string) {
+    return this.request(`/products/sellers/${sellerId}`);
+  }
+
+  async getSellerProducts(sellerId: string, page: number = 1, limit: number = 20) {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString()
+    });
+    return this.request(`/products/sellers/${sellerId}/products?${params.toString()}`);
   }
 }
 

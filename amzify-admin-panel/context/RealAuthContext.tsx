@@ -35,9 +35,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (token) {
         try {
           const response = await adminApiService.getCurrentUser();
-          setUser(response.user);
+          setUser(response.data?.user || null);
         } catch (error) {
-          // Token might be expired, clear it
+          // Token might be expired or backend unreachable, clear it
+          console.warn('Auth check failed:', error);
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
         }
@@ -62,7 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(response.user);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      const errorMessage = err instanceof Error ? err.message : 'Login failed. Please check your connection and try again.';
       setError(errorMessage);
       throw err;
     } finally {

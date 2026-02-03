@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import prisma from '../config/prisma.js';
+import { mockUserStore } from '../services/mockUserStore.js';
 
 export const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -12,24 +13,31 @@ export const authenticateToken = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Get user from database
-    const user = await prisma.users.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        first_name: true,
-        last_name: true,
-        is_active: true
-      }
-    });
+    let user = null;
+
+    try {
+      // Get user from database
+      user = await prisma.users.findUnique({
+        where: { id: decoded.userId },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          first_name: true,
+          last_name: true,
+          is_active: true
+        }
+      });
+    } catch (dbError) {
+      // Fallback to mock user store when DB is unavailable
+      user = await mockUserStore.findById(decoded.userId);
+    }
 
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
     }
     
-    if (!user.is_active) {
+    if (user.is_active === false) {
       return res.status(401).json({ error: 'Account is deactivated' });
     }
 

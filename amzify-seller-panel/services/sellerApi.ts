@@ -327,6 +327,21 @@ class SellerApiService {
       body: JSON.stringify({ platforms, content }),
     });
   }
+
+  // Password reset endpoints
+  async requestPasswordReset(email: string) {
+    return this.request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    return this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
+    });
+  }
 }
 
 export const sellerApiService = new SellerApiService();

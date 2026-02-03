@@ -14,9 +14,33 @@ import PostPurchaseModal from './components/PostPurchaseModal';
 import FeedbackModal from './components/FeedbackModal';
 import ProfileModal from './components/ProfileModal';
 import BecomeSellerModal from './components/BecomeSellerModal';
+import ProductsPage from './components/ProductsPage';
 import LoginPortal from './components/LoginPortal';
 import { useAuth } from './context/RealAuthContext';
 import { customerApiService } from './services/customerApi';
+
+// Mock data functions
+const getMockCategories = () => [
+  { id: '1', name: 'Electronics', icon: '📱' },
+  { id: '2', name: 'Fashion', icon: '👔' },
+  { id: '3', name: 'Home & Kitchen', icon: '🏠' },
+  { id: '4', name: 'Books', icon: '📚' },
+  { id: '5', name: 'Sports', icon: '⚽' }
+];
+
+const getMockProducts = () => Array.from({ length: 12 }).map((_, i) => ({
+  id: `p-${i}`,
+  title: `Product ${i + 1}`,
+  price: Math.floor(Math.random() * 5000) + 500,
+  originalPrice: Math.floor(Math.random() * 8000) + 1000,
+  category: 'Electronics',
+  rating: (Math.random() * 2 + 3).toFixed(1),
+  reviews: Math.floor(Math.random() * 500),
+  image: `https://picsum.photos/seed/product${i}/300/300`,
+  seller: `Seller ${i}`,
+  inStock: Math.random() > 0.3,
+  discount: Math.floor(Math.random() * 50)
+}));
 
 const App: React.FC = () => {
   // Authentication integration
@@ -26,6 +50,7 @@ const App: React.FC = () => {
   const hasCustomerAccess = user?.role === 'customer';
   
   // State management
+  const [currentView, setCurrentView] = useState<'home' | 'products'>('home');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -58,20 +83,35 @@ const App: React.FC = () => {
   const loadInitialData = async () => {
     try {
       setIsDataLoading(true);
+      setError(null);
       
-      // Load categories and products in parallel
-      const [categoriesResponse, productsResponse, cartResponse] = await Promise.all([
-        fetch('http://localhost:5000/api/categories').then(res => res.json()),
-        fetch('http://localhost:5000/api/products').then(res => res.json()),
-        customerApiService.getCart().catch(() => ({ items: [] })) // Cart might be empty
-      ]);
+      // Load categories and products in parallel with fallbacks
+      try {
+        const categoriesResponse = await fetch('http://localhost:5000/api/categories').then(res => res.json());
+        setCategories(categoriesResponse.categories || getMockCategories());
+      } catch {
+        setCategories(getMockCategories());
+      }
+      
+      try {
+        const productsResponse = await fetch('http://localhost:5000/api/products').then(res => res.json());
+        setProducts(productsResponse.products || getMockProducts());
+      } catch {
+        setProducts(getMockProducts());
+      }
 
-      setCategories(categoriesResponse.categories || []);
-      setProducts(productsResponse.products || []);
-      setCart(cartResponse.items || []);
+      try {
+        const cartResponse = await customerApiService.getCart().catch(() => ({ items: [] }));
+        setCart(cartResponse.items || []);
+      } catch {
+        setCart([]);
+      }
     } catch (err) {
-      setError('Failed to load data');
       console.error('Load data error:', err);
+      // Set mock data as fallback
+      setCategories(getMockCategories());
+      setProducts(getMockProducts());
+      setCart([]);
     } finally {
       setIsDataLoading(false);
     }
@@ -80,19 +120,29 @@ const App: React.FC = () => {
   const loadPublicData = async () => {
     try {
       setIsDataLoading(true);
+      setError(null);
       
-      // Load categories and products for guest browsing
-      const [categoriesResponse, productsResponse] = await Promise.all([
-        fetch('http://localhost:5000/api/categories').then(res => res.json()),
-        fetch('http://localhost:5000/api/products').then(res => res.json())
-      ]);
+      // Load categories and products for guest browsing with fallbacks
+      try {
+        const categoriesResponse = await fetch('http://localhost:5000/api/categories').then(res => res.json());
+        setCategories(categoriesResponse.categories || getMockCategories());
+      } catch {
+        setCategories(getMockCategories());
+      }
 
-      setCategories(categoriesResponse.categories || []);
-      setProducts(productsResponse.products || []);
+      try {
+        const productsResponse = await fetch('http://localhost:5000/api/products').then(res => res.json());
+        setProducts(productsResponse.products || getMockProducts());
+      } catch {
+        setProducts(getMockProducts());
+      }
+
       setCart([]); // Empty cart for guests
     } catch (err) {
-      setError('Failed to load data');
       console.error('Load data error:', err);
+      // Use mock data as fallback
+      setCategories(getMockCategories());
+      setProducts(getMockProducts());
     } finally {
       setIsDataLoading(false);
     }
@@ -232,6 +282,11 @@ const App: React.FC = () => {
     }).format(amount);
   };
 
+  const resetTokenParam = new URLSearchParams(window.location.search).get('resetToken');
+  if (resetTokenParam) {
+    return <LoginPortal />;
+  }
+
   // Access control - allow guest browsing, require login only for checkout/profile
   if (!isAuthenticated) {
     // Show login portal only if user is trying to access protected features
@@ -285,11 +340,27 @@ const App: React.FC = () => {
       <header className={`fixed top-0 left-0 right-0 z-40 transition-all duration-500 px-6 ${isScrolled ? 'bg-white/80 backdrop-blur-md h-16 border-b' : 'bg-transparent h-24'}`}>
         <div className="max-w-[1400px] mx-auto h-full flex items-center justify-between">
           <div className="flex items-center gap-12">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setCurrentView('home'); window.scrollTo({top: 0, behavior: 'smooth'}); }}>
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${isScrolled ? 'bg-slate-900 shadow-lg' : 'bg-white shadow-xl'}`}>
                 <span className={`font-black text-lg ${isScrolled ? 'text-white' : 'text-slate-900'}`}>A</span>
               </div>
               <h1 className={`text-lg font-black tracking-tighter hidden sm:block ${!isScrolled && 'text-white'}`}>Amzify</h1>
+            </div>
+            
+            {/* Navigation Links */}
+            <div className="hidden md:flex items-center gap-8">
+              <button 
+                onClick={() => { setCurrentView('home'); window.scrollTo({top: 0, behavior: 'smooth'}); }}
+                className={`font-bold transition-colors ${currentView === 'home' ? (isScrolled ? 'text-slate-900' : 'text-white') : (isScrolled ? 'text-slate-500 hover:text-slate-900' : 'text-white/70 hover:text-white')}`}
+              >
+                Home
+              </button>
+              <button 
+                onClick={() => setCurrentView('products')}
+                className={`font-bold transition-colors ${currentView === 'products' ? (isScrolled ? 'text-slate-900' : 'text-white') : (isScrolled ? 'text-slate-500 hover:text-slate-900' : 'text-white/70 hover:text-white')}`}
+              >
+                Products
+              </button>
             </div>
           </div>
 
@@ -335,6 +406,17 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-1 pb-24">
+        {/* Show ProductsPage when in products view */}
+        {currentView === 'products' && (
+          <ProductsPage 
+            onAddToCart={addToCart}
+            onSelectSeller={(seller) => console.log('Selected seller:', seller)}
+          />
+        )}
+
+        {/* Show Home view otherwise */}
+        {currentView === 'home' && (
+          <>
         {/* Hero Section */}
         {!searchQuery && selectedCategory === 'all' && (
           <section className="relative h-[85vh] flex items-end overflow-hidden bg-slate-950">
@@ -488,13 +570,19 @@ const App: React.FC = () => {
             </button>
           </div>
         </div>
+          </>
+        )}
       </main>
 
       {/* Mobile Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-t border-slate-100 px-8 py-4 h-20 flex items-center justify-between shadow-2xl md:hidden">
-        <button onClick={() => { window.scrollTo({top:0, behavior:'smooth'}); setSelectedCategory('all'); setSearchQuery(''); }} className="flex flex-col items-center gap-1 text-slate-900">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-t border-slate-100 px-4 py-4 h-20 flex items-center justify-between shadow-2xl md:hidden">
+        <button onClick={() => { setCurrentView('home'); window.scrollTo({top:0, behavior:'smooth'}); }} className="flex flex-col items-center gap-1 text-slate-900">
           <Home className="w-6 h-6" />
           <span className="text-[8px] font-black uppercase tracking-tighter">Shop</span>
+        </button>
+        <button onClick={() => setCurrentView('products')} className={`flex flex-col items-center gap-1 ${currentView === 'products' ? 'text-slate-900' : 'text-slate-400'}`}>
+          <LayoutGrid className="w-6 h-6" />
+          <span className="text-[8px] font-black uppercase tracking-tighter">Products</span>
         </button>
         <button onClick={() => setIsFeedbackOpen(true)} className="flex flex-col items-center gap-1 text-slate-400">
           <MessageSquare className="w-6 h-6" />

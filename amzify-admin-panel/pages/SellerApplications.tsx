@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Store, CheckCircle, XCircle, Clock, User, Building, Phone, Mail, 
-  MapPin, CreditCard, FileText, AlertCircle, Search, Filter, ChevronDown
+  MapPin, CreditCard, FileText, AlertCircle, Search, Download
 } from 'lucide-react';
+import { Seller, AccountStatus, UserRole } from '../types';
 
 interface SellerApplication {
   id: string;
@@ -29,50 +30,56 @@ interface SellerApplication {
   updated_at: string;
 }
 
+const computeStats = (apps: SellerApplication[]) => ({
+  pending: apps.filter(app => app.status === 'pending').length,
+  approved: apps.filter(app => app.status === 'approved').length,
+  rejected: apps.filter(app => app.status === 'rejected').length,
+  total: apps.length
+});
+
 const SellerApplications: React.FC = () => {
   const [applications, setApplications] = useState<SellerApplication[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedApp, setSelectedApp] = useState<SellerApplication | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [stats, setStats] = useState({ pending: 0, approved: 0, rejected: 0, total: 0 });
+  const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
-    fetchApplications();
-    fetchStats();
-  }, [filter]);
+    if (hasSearched) {
+      fetchApplications();
+    }
+  }, [hasSearched]);
+
+  useEffect(() => {
+    setStats(computeStats(applications));
+  }, [applications]);
 
   const fetchApplications = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('accessToken');
-      const params = filter !== 'all' ? `?status=${filter}` : '';
-      const response = await fetch(`http://localhost:5000/api/seller-applications${params}`, {
+      const response = await fetch('http://localhost:5000/api/seller-applications', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch applications');
+      }
+      
       const data = await response.json();
-      setApplications(data.applications || []);
+      const apiApps = data.applications || [];
+      setApplications(apiApps);
     } catch (error) {
       console.error('Error fetching applications:', error);
+      alert('Failed to load applications. Please check your connection.');
+      setApplications([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchStats = async () => {
-    try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch('http://localhost:5000/api/seller-applications/stats/overview', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await response.json();
-      setStats(data);
-    } catch (error) {
-      console.error('Error fetching stats:', error);
     }
   };
 
@@ -91,16 +98,16 @@ const SellerApplications: React.FC = () => {
 
       if (response.ok) {
         alert('Application approved successfully! Seller account created.');
-        fetchApplications();
-        fetchStats();
         setSelectedApp(null);
+        // Refresh the applications list
+        fetchApplications();
       } else {
         const data = await response.json();
         alert(data.error || 'Failed to approve application');
       }
     } catch (error) {
       console.error('Error approving application:', error);
-      alert('Failed to approve application');
+      alert('Failed to approve application. Please check your connection.');
     }
   };
 
@@ -124,26 +131,115 @@ const SellerApplications: React.FC = () => {
       });
 
       if (response.ok) {
-        alert('Application rejected');
-        fetchApplications();
-        fetchStats();
+        alert('Application rejected successfully');
         setSelectedApp(null);
         setRejectionReason('');
+        // Refresh the applications list
+        fetchApplications();
       } else {
         const data = await response.json();
         alert(data.error || 'Failed to reject application');
       }
     } catch (error) {
       console.error('Error rejecting application:', error);
-      alert('Failed to reject application');
+      alert('Failed to reject application. Please check your connection.');
     }
   };
 
-  const filteredApplications = applications.filter(app => 
-    app.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    `${app.first_name} ${app.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredApplications = applications.filter(app => {
+    const matchesFilter = filter === 'all' || app.status === filter;
+    const query = searchTerm.toLowerCase();
+    const matchesSearch =
+      app.company_name.toLowerCase().includes(query) ||
+      app.email.toLowerCase().includes(query) ||
+      `${app.first_name} ${app.last_name}`.toLowerCase().includes(query);
+    return matchesFilter && matchesSearch;
+  });
+
+  const handleSearch = () => {
+    setHasSearched(true);
+    setLoading(true);
+  };
+
+  const handleCSVDownload = () => {
+    if (!hasSearched || filteredApplications.length === 0) return;
+    const headers = ['Company', 'Applicant', 'Email', 'Phone', 'Status', 'Business Type', 'GST', 'PAN'];
+    const rows = filteredApplications.map((app) => [
+      app.company_name,
+      `${app.first_name} ${app.last_name}`,
+      app.email,
+      app.phone,
+      app.status,
+      app.business_type,
+      app.gst_number,
+      app.pan_number
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `seller-applications-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExcelDownload = () => {
+    if (!hasSearched || filteredApplications.length === 0) return;
+    const html = `
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #4CAF50; color: white; font-weight: bold; }
+            tr:nth-child(even) { background-color: #f2f2f2; }
+          </style>
+        </head>
+        <body>
+          <h2>Seller Applications - ${new Date().toLocaleDateString()}</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Applicant</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Status</th>
+                <th>Business Type</th>
+                <th>GST</th>
+                <th>PAN</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredApplications
+                .map((app) => `
+                  <tr>
+                    <td>${app.company_name}</td>
+                    <td>${app.first_name} ${app.last_name}</td>
+                    <td>${app.email}</td>
+                    <td>${app.phone}</td>
+                    <td>${app.status}</td>
+                    <td>${app.business_type}</td>
+                    <td>${app.gst_number}</td>
+                    <td>${app.pan_number}</td>
+                  </tr>
+                `)
+                .join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `seller-applications-${new Date().toISOString().slice(0, 10)}.xls`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -174,9 +270,29 @@ const SellerApplications: React.FC = () => {
   return (
     <div className="p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-black text-slate-900 mb-2">Seller Applications</h1>
-        <p className="text-slate-600">Review and manage seller registration requests</p>
+      <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-black text-slate-900 mb-2">Seller Applications</h1>
+          <p className="text-slate-600">Review and manage seller registration requests</p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={handleCSVDownload}
+            disabled={!hasSearched || filteredApplications.length === 0}
+            className="bg-white border border-slate-200 px-4 py-2 rounded-lg font-bold text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Download CSV
+          </button>
+          <button
+            onClick={handleExcelDownload}
+            disabled={!hasSearched || filteredApplications.length === 0}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg shadow-green-200 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Download Excel
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -221,6 +337,7 @@ const SellerApplications: React.FC = () => {
               placeholder="Search by company name, email, or applicant name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           </div>
@@ -239,12 +356,24 @@ const SellerApplications: React.FC = () => {
               </button>
             ))}
           </div>
+          <button
+            onClick={handleSearch}
+            className="px-6 py-3 rounded-xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-all"
+          >
+            Search
+          </button>
         </div>
       </div>
 
       {/* Applications List */}
       <div className="space-y-4">
-        {filteredApplications.length === 0 ? (
+        {!hasSearched ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+            <Search className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Search to view applications</h3>
+            <p className="text-slate-600">Click Search to load and review seller requests</p>
+          </div>
+        ) : filteredApplications.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
             <Store className="w-16 h-16 text-slate-300 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-slate-900 mb-2">No Applications Found</h3>

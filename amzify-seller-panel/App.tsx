@@ -248,6 +248,18 @@ const App: React.FC = () => {
     }).format(amount);
   };
 
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
+          <p className="text-slate-600 font-bold">Loading seller panel...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Access control - redirect or show error if user doesn't have seller access
   if (!isAuthenticated) {
     return <LoginPortal />;

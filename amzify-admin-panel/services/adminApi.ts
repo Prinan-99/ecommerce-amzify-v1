@@ -85,6 +85,11 @@ class AdminApiService {
     return this.request(`/admin/users${queryString}`);
   }
 
+  async getAllSellers(params?: { page?: number; limit?: number }) {
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    return this.request(`/admin/sellers${queryString}`);
+  }
+
   async getPendingSellers() {
     return this.request('/admin/sellers/pending');
   }
@@ -137,6 +142,10 @@ class AdminApiService {
     return this.request(`/admin/feedback${queryString}`);
   }
 
+  async getFeedbackStats() {
+    return this.request('/admin/feedback/stats');
+  }
+
   async updateFeedbackStatus(feedbackId: string, status: string, response?: string) {
     return this.request(`/admin/feedback/${feedbackId}`, {
       method: 'PATCH',
@@ -149,6 +158,39 @@ class AdminApiService {
       method: 'POST',
       body: JSON.stringify({ response }),
     });
+  }
+
+  // Password reset endpoints
+  async requestPasswordReset(email: string) {
+    return this.request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    return this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
+    });
+  }
+
+  // Products management
+  async getProducts(params?: { page?: number; limit?: number; category?: string; search?: string }) {
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    return this.request(`/products${queryString}`);
+  }
+
+  async getTopCategories() {
+    return this.request('/products/categories/top');
+  }
+
+  async getSellerDetails(sellerId: string) {
+    return this.request(`/products/sellers/${sellerId}`);
+  }
+
+  async getSellerProducts(sellerId: string, page: number = 1, limit: number = 20) {
+    return this.request(`/products/sellers/${sellerId}/products?page=${page}&limit=${limit}`);
   }
 }
 
