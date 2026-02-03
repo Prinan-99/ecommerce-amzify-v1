@@ -1,8 +1,8 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+import SellerRoutes from './SellerRoutes';
 import { AuthProvider } from './context/RealAuthContext';
+import { PostHogProvider } from 'posthog-js/react';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -12,8 +12,18 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
+    <PostHogProvider
+      apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY}
+      options={{
+        api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
+        defaults: '2025-05-24',
+        capture_exceptions: true, // This enables capturing exceptions using Error Tracking, set to false if you don't want this
+        debug: import.meta.env.MODE === 'development',
+      }}
+    >
+      <AuthProvider>
+        <SellerRoutes />
+      </AuthProvider>
+    </PostHogProvider>
   </React.StrictMode>
 );

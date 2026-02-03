@@ -17,6 +17,7 @@ import adminRoutes from './routes/admin.js';
 import categoriesRoutes from './routes/categories.js';
 import logisticsRoutes from './routes/logistics.js';
 import sellerApplicationsRoutes from './routes/sellerApplications.js';
+import sellerRoutes from './routes/seller.js';
 
 // Load environment variables
 dotenv.config();
@@ -86,6 +87,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/logistics', logisticsRoutes);
 app.use('/api/seller-applications', sellerApplicationsRoutes);
+app.use('/api/seller', sellerRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
