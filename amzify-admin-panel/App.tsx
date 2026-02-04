@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   BarChart3, Users, Settings, Shield, Activity, AlertTriangle, 
   Package, ShoppingCart, FileText, LogOut, User, CheckCircle, XCircle,
@@ -17,13 +17,12 @@ const App: React.FC = () => {
   // Role validation - ensure only super admins can access this panel
   const hasAdminAccess = user?.role === 'admin';
   
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'sellers' | 'seller-applications' | 'products' | 'orders' | 'feedback' | 'logistics' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'sellers' | 'seller-applications' | 'products' | 'feedback' | 'logistics' | 'settings'>('dashboard');
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [sellers, setSellers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
 
   // Load admin data
   useEffect(() => {
@@ -38,19 +37,17 @@ const App: React.FC = () => {
   const loadAdminData = async () => {
     try {
       setIsDataLoading(true);
-      const [statsResponse, usersResponse, sellersResponse, productsResponse, ordersResponse] = await Promise.all([
+      const [statsResponse, usersResponse, sellersResponse, productsResponse] = await Promise.all([
         adminApiService.getSystemStats().catch(() => null),
         adminApiService.getAllUsers().catch(() => ({ users: [] })),
         adminApiService.getAllSellers().catch(() => ({ sellers: [] })),
-        adminApiService.getAllProducts({ status: 'pending_approval' }).catch(() => ({ products: [] })),
-        adminApiService.getAllOrders().catch(() => ({ orders: [] }))
+        adminApiService.getAllProducts({ status: 'pending_approval' }).catch(() => ({ products: [] }))
       ]);
 
       setStats(statsResponse?.overview || statsResponse);
       setUsers(usersResponse.users || []);
       setSellers(sellersResponse.sellers || []);
       setProducts(productsResponse.products || []);
-      setOrders(ordersResponse.orders || []);
       // Feedback is loaded independently in FeedbackTab component
     } catch (error) {
       console.error('Load admin data error:', error);
@@ -195,12 +192,12 @@ const App: React.FC = () => {
 
       {/* Navigation */}
       <div className="max-w-[1440px] mx-auto p-6">
-        <div className="bg-white p-2 rounded-[2.5rem] border border-slate-100 shadow-xl overflow-x-auto no-scrollbar flex gap-1 mb-8">
-          {(['dashboard', 'users', 'sellers', 'seller-applications', 'products', 'orders', 'feedback', 'logistics', 'settings'] as const).map(tab => (
+        <div className="bg-white p-2 rounded-[2.5rem] border border-slate-100 shadow-xl overflow-x-auto no-scrollbar flex gap-1 mb-8 justify-center">
+          {(['dashboard', 'users', 'sellers', 'seller-applications', 'products', 'feedback', 'logistics', 'settings'] as const).map(tab => (
             <button 
               key={tab} 
               onClick={() => setActiveTab(tab)} 
-              className={`px-10 py-4 rounded-[2rem] text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab ? 'bg-slate-950 text-white shadow-lg' : 'text-slate-400 hover:text-slate-950'}`}
+              className={`px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab ? 'bg-slate-950 text-white shadow-lg' : 'text-slate-400 hover:text-slate-950'}`}
             >
               {tab === 'seller-applications' ? 'Applications' : tab}
             </button>
@@ -239,7 +236,6 @@ const App: React.FC = () => {
               )}
               {activeTab === 'seller-applications' && <SellerApplications />}
               {activeTab === 'products' && <ProductsTab products={products} onApprove={handleApproveProduct} onReject={handleRejectProduct} onRefresh={loadAdminData} />}
-              {activeTab === 'orders' && <OrdersTab orders={orders} onRefresh={loadAdminData} />}
               {activeTab === 'feedback' && <FeedbackTab onRefresh={loadAdminData} />}
               {activeTab === 'logistics' && <LogisticsTab onRefresh={loadAdminData} />}
               {activeTab === 'settings' && <SettingsTab />}
@@ -1031,6 +1027,11 @@ const SellersTab: React.FC<{
 
 // Products Tab Component
 const ProductsTab: React.FC<{ products: any[]; onApprove: (id: string) => void; onReject: (id: string) => void; onRefresh: () => void }> = ({ products, onApprove, onReject, onRefresh }) => {
+  const [historyMap, setHistoryMap] = useState<Record<string, { timestamp: string; changes: { field: string; from: any; to: any }[] }[]>>({});
+  const [historyProduct, setHistoryProduct] = useState<any | null>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const prevProductsRef = useRef<any[]>([]);
+
   const formatINR = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -1038,6 +1039,74 @@ const ProductsTab: React.FC<{ products: any[]; onApprove: (id: string) => void; 
       maximumFractionDigits: 0
     }).format(amount);
   };
+
+  const formatDateTime = (value?: string) => {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleString();
+  };
+
+  const formatValue = (value: any) => {
+    if (value === null || value === undefined || value === '') return '—';
+    if (Array.isArray(value)) return value.length ? value.join(', ') : '—';
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  };
+
+  const historyFields: { label: string; get: (product: any) => any }[] = [
+    { label: 'Name', get: (p) => p.name },
+    { label: 'Price', get: (p) => p.price },
+    { label: 'Status', get: (p) => p.status },
+    { label: 'Stock', get: (p) => p.stock_quantity ?? p.stock },
+    { label: 'Category', get: (p) => p.category_name ?? p.category },
+    { label: 'Description', get: (p) => p.description },
+    { label: 'Images', get: (p) => (Array.isArray(p.images) ? p.images.length : 0) }
+  ];
+
+  const getLastUpdated = (product: any) => {
+    return product.updated_at || product.updatedAt || product.created_at || product.createdAt;
+  };
+
+  const isRecentlyUpdated = (product: any) => {
+    const lastUpdated = getLastUpdated(product);
+    if (!lastUpdated) return false;
+    const updatedAt = new Date(lastUpdated).getTime();
+    if (Number.isNaN(updatedAt)) return false;
+    const hoursSinceUpdate = (Date.now() - updatedAt) / (1000 * 60 * 60);
+    return hoursSinceUpdate <= 24;
+  };
+
+  useEffect(() => {
+    const previous = prevProductsRef.current;
+    if (previous.length > 0) {
+      const previousById = new Map(previous.map((p) => [p.id, p]));
+      products.forEach((product) => {
+        const prev = previousById.get(product.id);
+        if (!prev) return;
+
+        const changes = historyFields
+          .map((field) => {
+            const before = field.get(prev);
+            const after = field.get(product);
+            return before !== after ? { field: field.label, from: before, to: after } : null;
+          })
+          .filter(Boolean) as { field: string; from: any; to: any }[];
+
+        if (changes.length > 0) {
+          setHistoryMap((current) => ({
+            ...current,
+            [product.id]: [
+              ...(current[product.id] || []),
+              { timestamp: new Date().toISOString(), changes }
+            ]
+          }));
+        }
+      });
+    }
+
+    prevProductsRef.current = products;
+  }, [products]);
 
   return (
     <div className="bg-white rounded-[4rem] border border-slate-100 shadow-sm p-12">
@@ -1061,7 +1130,14 @@ const ProductsTab: React.FC<{ products: any[]; onApprove: (id: string) => void; 
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {products.map((product) => (
-            <div key={product.id} className="border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition-all">
+            <div 
+              key={product.id} 
+              className={`border rounded-2xl p-6 hover:shadow-lg transition-all ${
+                isRecentlyUpdated(product)
+                  ? 'border-indigo-300 bg-indigo-50/30 shadow-sm'
+                  : 'border-slate-200'
+              }`}
+            >
               <div className="aspect-square bg-slate-100 rounded-xl mb-4 overflow-hidden">
                 <img 
                   src={product.images?.[0] || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400'} 
@@ -1081,7 +1157,26 @@ const ProductsTab: React.FC<{ products: any[]; onApprove: (id: string) => void; 
                   {product.status}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mb-4">by {product.seller_name}</p>
+              <p className="text-xs text-slate-500">by {product.seller_name}</p>
+              <p className="text-xs text-slate-500 mb-4">Last updated: {formatDateTime(getLastUpdated(product))}</p>
+
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <button
+                  onClick={() => {
+                    setHistoryProduct(product);
+                    setIsHistoryOpen(true);
+                  }}
+                  className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-200 transition-all"
+                >
+                  <FileText className="w-4 h-4 inline mr-1" />
+                  View History
+                </button>
+                {isRecentlyUpdated(product) && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-indigo-600 bg-indigo-100 px-2 py-1 rounded-full">
+                    Updated
+                  </span>
+                )}
+              </div>
               
               {product.status === 'pending_approval' && (
                 <div className="flex items-center gap-2">
@@ -1103,6 +1198,44 @@ const ProductsTab: React.FC<{ products: any[]; onApprove: (id: string) => void; 
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {isHistoryOpen && historyProduct && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xl font-black text-slate-900">Change History</h4>
+                <p className="text-sm text-slate-500">{historyProduct.name}</p>
+              </div>
+              <button onClick={() => setIsHistoryOpen(false)} className="text-slate-400 hover:text-slate-700">✕</button>
+            </div>
+
+            <div className="mt-6 space-y-4 max-h-[60vh] overflow-y-auto">
+              {(historyMap[historyProduct.id] || []).length === 0 ? (
+                <div className="text-center py-8 text-slate-500">No changes recorded yet.</div>
+              ) : (
+                [...(historyMap[historyProduct.id] || [])].reverse().map((entry, index) => (
+                  <div key={`${historyProduct.id}-${index}`} className="border border-slate-200 rounded-xl p-4">
+                    <div className="text-xs font-semibold text-slate-500">
+                      {formatDateTime(entry.timestamp)}
+                    </div>
+                    <ul className="mt-3 space-y-2">
+                      {entry.changes.map((change, changeIndex) => (
+                        <li key={`${historyProduct.id}-${index}-${changeIndex}`} className="text-sm text-slate-700">
+                          <span className="font-semibold text-slate-900">{change.field}:</span>{' '}
+                          <span className="text-slate-400 line-through">{formatValue(change.from)}</span>
+                          <span className="mx-2 text-slate-500">→</span>
+                          <span className="text-slate-900">{formatValue(change.to)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

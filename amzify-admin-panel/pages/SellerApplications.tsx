@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Store, CheckCircle, XCircle, Clock, User, Building, Phone, Mail, 
-  MapPin, CreditCard, FileText, AlertCircle, Search, Download
+  MapPin, CreditCard, FileText, AlertCircle, Search, Download, ChevronDown
 } from 'lucide-react';
 import { Seller, AccountStatus, UserRole } from '../types';
 
@@ -46,12 +46,26 @@ const SellerApplications: React.FC = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [stats, setStats] = useState({ pending: 0, approved: 0, rejected: 0, total: 0 });
   const [hasSearched, setHasSearched] = useState(false);
+  const [showRecentApproved, setShowRecentApproved] = useState(false);
 
+  // Auto-refresh applications every 10 seconds
   useEffect(() => {
     if (hasSearched) {
       fetchApplications();
+      const interval = setInterval(() => {
+        fetchApplications();
+      }, 10000); // Refresh every 10 seconds
+      
+      return () => clearInterval(interval);
     }
   }, [hasSearched]);
+
+  // Auto-load when Recently Approved is toggled
+  useEffect(() => {
+    if (showRecentApproved && !hasSearched) {
+      setHasSearched(true);
+    }
+  }, [showRecentApproved]);
 
   useEffect(() => {
     setStats(computeStats(applications));
@@ -157,7 +171,13 @@ const SellerApplications: React.FC = () => {
       app.email.toLowerCase().includes(query) ||
       `${app.first_name} ${app.last_name}`.toLowerCase().includes(query);
     return matchesFilter && matchesSearch;
-  });
+  }).sort((a, b) => {
+    // If "recently approved" is active, sort by updated_at/reviewed_at descending
+    if (showRecentApproved && filter === 'approved') {
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+    }
+    return 0;
+  }).slice(0, showRecentApproved && filter === 'approved' ? 5 : undefined); // Show only last 5 for recently approved
 
   const handleSearch = () => {
     setHasSearched(true);
@@ -307,12 +327,67 @@ const SellerApplications: React.FC = () => {
           </div>
           <div className="text-3xl font-black text-slate-900">{stats.pending}</div>
         </div>
-        <div className="bg-white rounded-2xl p-6 border border-slate-200">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-600 text-sm font-medium">Approved</span>
-            <CheckCircle className="w-5 h-5 text-green-600" />
+        <div 
+          className="bg-white rounded-2xl p-6 border border-slate-200 relative"
+        >
+          <div 
+            onClick={() => {
+              setFilter('approved');
+              if (!hasSearched) setHasSearched(true);
+            }}
+            className="cursor-pointer"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1">
+                <span className="text-slate-600 text-sm font-medium">Approved</span>
+                {applications.some(app => app.status === 'approved') && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowRecentApproved(!showRecentApproved);
+                    }}
+                    className="hover:bg-green-50 rounded-lg p-1 transition-colors"
+                  >
+                    <ChevronDown className={`w-4 h-4 text-green-600 transition-transform ${
+                      showRecentApproved ? 'rotate-180' : ''
+                    }`} />
+                  </button>
+                )}
+              </div>
+              <CheckCircle className="w-5 h-5 text-green-600" />
+            </div>
+            <div className="text-3xl font-black text-slate-900">{stats.approved}</div>
           </div>
-          <div className="text-3xl font-black text-slate-900">{stats.approved}</div>
+
+          {showRecentApproved && applications.some(app => app.status === 'approved') && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl border border-slate-200 shadow-xl z-50 max-h-80 overflow-y-auto">
+              <div className="p-4">
+                <h4 className="text-sm font-bold text-slate-900 mb-3">Last 5 Approved</h4>
+                {applications
+                  .filter(app => app.status === 'approved')
+                  .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+                  .slice(0, 5)
+                  .map((app) => (
+                    <div 
+                      key={app.id}
+                      className="py-3 border-b border-slate-100 last:border-b-0 hover:bg-slate-50 px-2 rounded transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-sm text-slate-900">{app.company_name}</p>
+                          <p className="text-xs text-slate-600">{app.first_name} {app.last_name}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-green-600 font-medium">
+                            {new Date(app.updated_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
         <div className="bg-white rounded-2xl p-6 border border-slate-200">
           <div className="flex items-center justify-between mb-2">
@@ -348,7 +423,10 @@ const SellerApplications: React.FC = () => {
             {(['all', 'pending', 'approved', 'rejected'] as const).map((status) => (
               <button
                 key={status}
-                onClick={() => setFilter(status)}
+                onClick={() => {
+                  setFilter(status);
+                  if (status !== 'approved') setShowRecentApproved(false);
+                }}
                 className={`px-6 py-3 rounded-xl font-bold text-sm capitalize transition-all ${
                   filter === status
                     ? 'bg-indigo-600 text-white'
