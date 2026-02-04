@@ -12,10 +12,16 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.72.1",
+    "@google/genai": "^1.39.0",
+    "@google/generative-ai": "^0.24.1",
     "@types/jsonwebtoken": "^9.0.10",
     "axios": "^1.13.4",
+    "date-fns": "^3.0.0",
+    "jsbarcode": "^3.12.3",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.563.0",
+    "posthog-js": "^1.337.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.0",

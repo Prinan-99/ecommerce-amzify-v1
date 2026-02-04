@@ -3,12 +3,16 @@ generator client {
   output   = "../generated/prisma"
 }
 
+generator erd {
+  provider = "prisma-erd-generator"
+  output = "../ERD.svg"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model account_deletion_requests {
   id                                                  String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   user_id                                             String?   @db.Uuid
@@ -21,7 +25,6 @@ model account_deletion_requests {
   users_account_deletion_requests_user_idTousers      users?    @relation("account_deletion_requests_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model addresses {
   id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   user_id        String?   @db.Uuid
@@ -65,7 +68,6 @@ model categories {
   products         products[]
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model customer_feedback {
   id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   customer_id    String?   @db.Uuid
@@ -85,7 +87,6 @@ model customer_feedback {
   @@index([status], map: "idx_feedback_status")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model marketing_campaigns {
   id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   seller_id       String?   @db.Uuid
@@ -121,7 +122,6 @@ model order_items {
   product_variants product_variants? @relation(fields: [variant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model orders {
   id               String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   customer_id      String?       @db.Uuid
@@ -148,7 +148,6 @@ model orders {
   @@index([status], map: "idx_orders_status")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model otp_verifications {
   id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   email      String    @db.VarChar(255)
@@ -176,7 +175,6 @@ model product_variants {
   products         products?     @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model products {
   id                String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   seller_id         String?            @db.Uuid
@@ -248,8 +246,8 @@ model seller_applications {
   created_at           DateTime? @default(now()) @db.Timestamp(6)
   updated_at           DateTime? @default(now()) @db.Timestamp(6)
 
-  @@index([status], map: "idx_seller_applications_status")
   @@index([email], map: "idx_seller_applications_email")
+  @@index([status], map: "idx_seller_applications_status")
 }
 
 model seller_profiles {
@@ -278,7 +276,6 @@ model seller_profiles {
   users               users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model shipments {
   id                 String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   order_id           String?           @db.Uuid
@@ -297,7 +294,6 @@ model shipments {
   tracking_events    tracking_events[]
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model support_tickets {
   id                                       String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   user_id                                  String?           @db.Uuid
@@ -336,7 +332,6 @@ model tracking_events {
   shipments   shipments? @relation(fields: [shipment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model users {
   id                                                                      String                      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   email                                                                   String                      @unique @db.VarChar(255)
