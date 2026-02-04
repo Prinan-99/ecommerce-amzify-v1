@@ -153,6 +153,12 @@ const App: React.FC = () => {
       try {
         const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
         const productsResponse = await fetch(`${API_BASE_URL}/api/products`).then(res => res.json());
+        setProducts(productsResponse.products || getMockProducts());
+      } catch {
+        setProducts(getMockProducts());
+      }
+
+      setCart([]); // Empty cart for guests
     } catch (err) {
       console.error('Load data error:', err);
       // Use mock data as fallback
