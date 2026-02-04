@@ -91,12 +91,21 @@ export const LogisticsTab: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-8">
         <div className="max-w-7xl mx-auto">
           <PremiumCard variant="glass" className="p-8">
-            <div className="flex items-center gap-4 text-red-600">
-              <AlertCircle className="w-6 h-6" />
-              <div>
-                <h3 className="font-bold">Error Loading Logistics Data</h3>
-                <p className="text-sm">{error}</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4 text-red-600">
+                <AlertCircle className="w-6 h-6" />
+                <div>
+                  <h3 className="font-bold">Error Loading Logistics Data</h3>
+                  <p className="text-sm">{error}</p>
+                </div>
               </div>
+              <button
+                onClick={fetchLogisticsData}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Retry
+              </button>
             </div>
           </PremiumCard>
         </div>
@@ -114,7 +123,16 @@ export const LogisticsTab: React.FC = () => {
               <h1 className="text-3xl font-black text-slate-900">Logistics & Fulfillment</h1>
               <p className="text-sm text-slate-600 mt-1">End-to-end supply chain management</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
+              <button
+                onClick={fetchLogisticsData}
+                disabled={loading}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RotateCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+              <div className="flex gap-2">
               <button
                 onClick={() => setActiveView('overview')}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${
@@ -145,6 +163,7 @@ export const LogisticsTab: React.FC = () => {
               >
                 Returns
               </button>
+              </div>
             </div>
           </div>
         </div>

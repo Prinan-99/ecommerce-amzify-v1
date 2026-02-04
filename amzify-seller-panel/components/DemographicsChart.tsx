@@ -139,11 +139,12 @@ export const DemographicsChart: React.FC<DemographicsChartProps> = ({ title, dat
           {/* Detailed Tooltip */}
           {hoveredIndex !== null && (
             <div 
-              className="fixed bg-slate-800 border border-slate-600 rounded-xl p-4 shadow-2xl z-[200] animate-in fade-in slide-in-from-bottom-2 duration-200 min-w-[280px]"
+              className="fixed bg-slate-800 border-2 border-purple-500 rounded-xl p-4 shadow-2xl z-[9999] min-w-[280px]"
               style={{ 
                 left: `${tooltipPosition.x + 20}px`, 
                 top: `${tooltipPosition.y - 100}px`,
-                pointerEvents: 'none'
+                pointerEvents: 'none',
+                transform: 'translate(0, 0)'
               }}
             >
               <div className="flex items-center gap-3 mb-3">

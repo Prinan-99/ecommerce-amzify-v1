@@ -249,6 +249,103 @@ class SellerApiService {
     return this.request('/customers/insights');
   }
 
+    // Customer Analytics endpoints
+    async getCustomerAnalyticsOverview(startDate?: string, endDate?: string) {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      return this.request(`/seller/analytics/overview?${params.toString()}`);
+    }
+
+    async getCustomersList(filters?: { search?: string; segment?: string; startDate?: string; endDate?: string; page?: number; limit?: number }) {
+      const params = new URLSearchParams();
+      if (filters?.search) params.append('search', filters.search);
+      if (filters?.segment) params.append('segment', filters.segment);
+      if (filters?.startDate) params.append('startDate', filters.startDate);
+      if (filters?.endDate) params.append('endDate', filters.endDate);
+      if (filters?.page) params.append('page', filters.page.toString());
+      if (filters?.limit) params.append('limit', filters.limit.toString());
+      return this.request(`/seller/customers?${params.toString()}`);
+    }
+
+    async getCustomerProfile(customerId: string) {
+      return this.request(`/seller/customers/${customerId}`);
+    }
+
+    async getCustomerActivity(customerId: string) {
+      return this.request(`/seller/customers/${customerId}/activity`);
+    }
+
+    async getCustomerSegmentation() {
+      return this.request('/seller/segmentation');
+    }
+
+    async exportCustomers(startDate?: string, endDate?: string) {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      const response = await fetch(`${API_BASE_URL}/seller/export/customers?${params.toString()}`, {
+        headers: this.getAuthHeaders()
+      });
+      
+      if (!response.ok) throw new Error('Export failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `customers_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }
+
+    async exportPurchaseReport(startDate?: string, endDate?: string) {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      const response = await fetch(`${API_BASE_URL}/seller/export/purchase-report?${params.toString()}`, {
+        headers: this.getAuthHeaders()
+      });
+      
+      if (!response.ok) throw new Error('Export failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `purchase_report_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }
+
+    async exportRepeatCustomers() {
+      const response = await fetch(`${API_BASE_URL}/seller/export/repeat-customers`, {
+        headers: this.getAuthHeaders()
+      });
+      
+      if (!response.ok) throw new Error('Export failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `repeat_customers_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }
+
+    async getCustomerAIInsights(customerId: string) {
+      return this.request(`/seller/customers/${customerId}/ai-insights`);
+    }
+
   // Logistics endpoints
   async getMyShipments() {
     return this.request('/logistics/shipments');
