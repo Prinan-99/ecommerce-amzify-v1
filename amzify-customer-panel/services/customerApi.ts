@@ -133,16 +133,6 @@ class CustomerApiService {
     return data;
   }
 
-  // Products endpoints
-  async getProducts(params?: { category?: string; search?: string; page?: number; limit?: number }) {
-    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
-    return this.request(`/products${queryString}`);
-  }
-
-  async getProduct(id: string) {
-    return this.request(`/products/${id}`);
-  }
-
   // Cart endpoints
   async getCart() {
     return this.request('/cart');
@@ -182,6 +172,39 @@ class CustomerApiService {
 
   async getOrder(id: string) {
     return this.request(`/orders/${id}`);
+  }
+
+  // Products endpoints
+  async getTopCategories() {
+    return this.request('/products/categories/top');
+  }
+
+  async getProducts(page: number = 1, limit: number = 20, filters?: any) {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      ...(filters?.category && { category: filters.category }),
+      ...(filters?.search && { search: filters.search }),
+      ...(filters?.sort && { sort: filters.sort }),
+      ...(filters?.order && { order: filters.order })
+    });
+    return this.request(`/products?${params.toString()}`);
+  }
+
+  async getProduct(id: string) {
+    return this.request(`/products/${id}`);
+  }
+
+  async getSellerDetails(sellerId: string) {
+    return this.request(`/products/sellers/${sellerId}`);
+  }
+
+  async getSellerProducts(sellerId: string, page: number = 1, limit: number = 20) {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString()
+    });
+    return this.request(`/products/sellers/${sellerId}/products?${params.toString()}`);
   }
 }
 

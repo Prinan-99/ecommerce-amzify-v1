@@ -17,6 +17,7 @@ import adminRoutes from './routes/admin.js';
 import categoriesRoutes from './routes/categories.js';
 import logisticsRoutes from './routes/logistics.js';
 import sellerApplicationsRoutes from './routes/sellerApplications.js';
+import sellerRoutes from './routes/seller.js';
 
 // Load environment variables
 dotenv.config();
@@ -46,7 +47,14 @@ app.use(limiter);
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
     ? ['https://yourdomain.com'] 
-    : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'],
+    : function(origin, callback) {
+        // Allow all localhost URLs (for dynamic dev server ports)
+        if (!origin || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -79,6 +87,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/logistics', logisticsRoutes);
 app.use('/api/seller-applications', sellerApplicationsRoutes);
+app.use('/api/seller', sellerRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

@@ -86,7 +86,7 @@ const LoginPortal: React.FC = () => {
   };
 
   const handleDemoLogin = () => {
-    setEmail('admin@amzify.com');
+    setEmail('amzify54@gmail.com');
     setPassword('admin123');
     clearError();
   };
@@ -160,7 +160,7 @@ const LoginPortal: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-red-500 transition-all"
-                placeholder="admin@amzify.com"
+                placeholder="amzify54@gmail.com"
                 disabled={isLoading}
               />
             </div>
@@ -218,7 +218,7 @@ const LoginPortal: React.FC = () => {
                 value={forgotEmail}
                 onChange={(e) => setForgotEmail(e.target.value)}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-red-500 transition-all"
-                placeholder="admin@amzify.com"
+                placeholder="amzify54@gmail.com"
                 disabled={isSubmitting}
               />
             </div>
