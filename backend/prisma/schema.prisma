@@ -374,3 +374,15 @@ model wishlist_items {
 
   @@unique([user_id, product_id])
 }
+
+model EmailOtp {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email      String    @db.VarChar(255)
+  otp_hash   String    @db.VarChar(255)
+  expires_at DateTime  @db.Timestamp(6)
+  attempts   Int       @default(0)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([email], map: "idx_email_otp_email")
+  @@index([expires_at], map: "idx_email_otp_expires")
+}

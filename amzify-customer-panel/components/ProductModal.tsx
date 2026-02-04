@@ -17,6 +17,15 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, onClose, onAddToCa
 
   if (!product) return null;
 
+  // Ensure images array exists
+  const productImages = product.images && product.images.length > 0 
+    ? product.images 
+    : [product.image || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400'];
+  
+  const productName = product.name || product.title || 'Product';
+  const productCategory = product.category_name || product.category || 'General';
+  const productRating = product.rating || 4.5;
+
   const formatINR = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -39,13 +48,13 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, onClose, onAddToCa
   const nextImg = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsZooming(false);
-    setActiveImageIdx(prev => (prev + 1) % product.images.length);
+    setActiveImageIdx(prev => (prev + 1) % productImages.length);
   };
 
   const prevImg = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsZooming(false);
-    setActiveImageIdx(prev => (prev - 1 + product.images.length) % product.images.length);
+    setActiveImageIdx(prev => (prev - 1 + productImages.length) % productImages.length);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -80,8 +89,8 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, onClose, onAddToCa
           onMouseLeave={() => setIsZooming(false)}
         >
           <img 
-            src={product.images[activeImageIdx]} 
-            alt={product.name} 
+            src={productImages[activeImageIdx]} 
+            alt={productName} 
             className={`w-full h-full object-cover transition-transform will-change-transform ${isZooming ? 'duration-200' : 'duration-700'}`}
             style={{
               transform: isZooming ? 'scale(2)' : 'scale(1)',
@@ -105,7 +114,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, onClose, onAddToCa
           </div>
 
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2">
-            {product.images.map((_, i) => (
+            {productImages.map((_, i) => (
               <div 
                 key={i} 
                 className={`h-1.5 rounded-full transition-all ${i === activeImageIdx ? 'w-8 bg-white' : 'w-2 bg-white/40'}`}
@@ -120,21 +129,21 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, onClose, onAddToCa
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <span className="px-4 py-1.5 bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest rounded-lg">
-                  {product.category}
+                  {productCategory}
                 </span>
                 <div className="flex items-center gap-1.5">
                   <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                  <span className="text-xs font-black text-slate-900">{product.rating}</span>
+                  <span className="text-xs font-black text-slate-900">{productRating}</span>
                 </div>
               </div>
-              <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-none">{product.name}</h2>
+              <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-none">{productName}</h2>
               <p className="text-3xl font-black text-indigo-600 mt-2">
                 {formatINR(product.price)}
               </p>
             </div>
 
             <p className="text-slate-500 leading-relaxed text-lg font-medium">
-              {product.description}
+              {product.description || 'Premium quality product with excellent features and craftsmanship.'}
             </p>
 
             <div className="grid grid-cols-2 gap-4 py-8 border-y border-slate-50">

@@ -7,13 +7,19 @@ import { customerApiService } from '../services/customerApi';
 
 interface Product {
   id: string;
-  name: string;
+  name?: string;
+  title?: string;
   price: number;
   images?: any[];
+  image?: string;
   category_name?: string;
+  category?: string;
   seller_name?: string;
   stock_quantity?: number;
+  stock?: number;
   created_at?: string;
+  description?: string;
+  rating?: number;
 }
 
 interface Category {
@@ -149,17 +155,20 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ onAddToCart, onSelectSeller
     <div className="bg-white">
       {/* Top Categories Section */}
       {categories.length > 0 && (
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white py-12">
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white py-16">
           <div className="max-w-7xl mx-auto px-6">
-            <h2 className="text-3xl font-black mb-8">TOP CATEGORIES</h2>
+            <div className="mb-10">
+              <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">TOP CATEGORIES</h2>
+              <div className="w-16 h-1 bg-gradient-to-r from-red-600 to-red-500 rounded-full mt-4"></div>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
               {categories.map(category => (
                 <button
                   key={category.id}
                   onClick={() => handleCategorySelect(category.id)}
-                  className={`p-4 rounded-xl transition-all text-center ${
+                  className={`p-4 rounded-xl transition-all text-center font-semibold ${
                     selectedCategory === category.id
-                      ? 'bg-red-600 shadow-lg'
+                      ? 'bg-red-600 shadow-lg scale-105'
                       : 'bg-slate-700 hover:bg-slate-600'
                   }`}
                 >
@@ -229,22 +238,23 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ onAddToCart, onSelectSeller
                   <div className="aspect-square bg-slate-100 overflow-hidden">
                     <img
                       src={
-                        product.images?.[0] ||
+                        product.images && product.images.length > 0 ? product.images[0] :
+                        product.image ||
                         'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop'
                       }
-                      alt={product.name}
+                      alt={product.name || product.title || 'Product'}
                       className="w-full h-full object-cover"
                     />
                   </div>
 
                   {/* Product Info */}
                   <div className="p-4">
-                    <h4 className="font-bold text-slate-900 mb-2 line-clamp-2">{product.name}</h4>
+                    <h4 className="font-bold text-slate-900 mb-2 line-clamp-2">{product.name || product.title || 'Product'}</h4>
 
                     {/* Category & Seller */}
                     <div className="mb-3 text-xs">
-                      {product.category_name && (
-                        <div className="text-slate-500 mb-1">{product.category_name}</div>
+                      {(product.category_name || product.category) && (
+                        <div className="text-slate-500 mb-1">{product.category_name || product.category}</div>
                       )}
                       {product.seller_name && (
                         <button
@@ -266,9 +276,9 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ onAddToCart, onSelectSeller
 
                     {/* Stock Status */}
                     <div className="mb-4">
-                      {product.stock_quantity ? (
+                      {(product.stock_quantity || product.stock) ? (
                         <span className="text-xs text-green-600 font-medium">
-                          {product.stock_quantity} In Stock
+                          {product.stock_quantity || product.stock} In Stock
                         </span>
                       ) : (
                         <span className="text-xs text-red-600 font-medium">Out of Stock</span>
@@ -278,15 +288,15 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ onAddToCart, onSelectSeller
                     {/* Add to Cart Button */}
                     <button
                       onClick={() => onAddToCart(product)}
-                      disabled={!product.stock_quantity}
+                      disabled={!(product.stock_quantity || product.stock)}
                       className={`w-full py-2 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-                        product.stock_quantity
+                        (product.stock_quantity || product.stock)
                           ? 'bg-red-600 text-white hover:bg-red-700'
                           : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                       }`}
                     >
                       <ShoppingCart className="w-4 h-4" />
-                      {product.stock_quantity ? 'Add to Cart' : 'Out of Stock'}
+                      {(product.stock_quantity || product.stock) ? 'Add to Cart' : 'Out of Stock'}
                     </button>
                   </div>
                 </div>
@@ -372,15 +382,16 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ onAddToCart, onSelectSeller
                         <div className="aspect-square bg-slate-100 overflow-hidden">
                           <img
                             src={
-                              product.images?.[0] ||
+                              product.images && product.images.length > 0 ? product.images[0] :
+                              product.image ||
                               'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop'
                             }
-                            alt={product.name}
+                            alt={product.name || product.title || 'Product'}
                             className="w-full h-full object-cover"
                           />
                         </div>
                         <div className="p-4">
-                          <h4 className="font-bold text-slate-900 mb-2 line-clamp-2">{product.name}</h4>
+                          <h4 className="font-bold text-slate-900 mb-2 line-clamp-2">{product.name || product.title || 'Product'}</h4>
                           <div className="mb-4">
                             <span className="text-lg font-black text-slate-900">
                               {formatINR(Number(product.price))}
@@ -388,9 +399,14 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ onAddToCart, onSelectSeller
                           </div>
                           <button
                             onClick={() => onAddToCart(product)}
-                            className="w-full py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-all"
+                            disabled={!(product.stock_quantity || product.stock)}
+                            className={`w-full py-2 rounded-lg font-medium transition-all ${
+                              (product.stock_quantity || product.stock)
+                                ? 'bg-red-600 text-white hover:bg-red-700'
+                                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                            }`}
                           >
-                            Add to Cart
+                            {(product.stock_quantity || product.stock) ? 'Add to Cart' : 'Out of Stock'}
                           </button>
                         </div>
                       </div>

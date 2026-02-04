@@ -14,6 +14,52 @@ class EmailService {
     });
   }
 
+  async sendOtpEmail(email, otp) {
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #4f46e5; margin: 0;">Amzify</h1>
+          <p style="color: #6b7280; margin: 5px 0;">Email Verification</p>
+        </div>
+        
+        <div style="background: #f9fafb; padding: 30px; border-radius: 10px; text-align: center;">
+          <h2 style="color: #1f2937; margin-bottom: 20px;">Verify Your Email</h2>
+          
+          <p style="color: #4b5563; margin-bottom: 30px; font-size: 16px;">
+            Please use the following OTP to verify your email address:
+          </p>
+          
+          <div style="background: #4f46e5; color: white; padding: 20px; border-radius: 8px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 20px 0;">
+            ${otp}
+          </div>
+          
+          <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
+            This OTP will expire in 5 minutes. If you didn't request this, please ignore this email.
+          </p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px; color: #9ca3af; font-size: 12px;">
+          <p>© 2024 Amzify. All rights reserved.</p>
+        </div>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: `"Amzify" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Verify Your Email - Amzify',
+      html: html
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+      return true;
+    } catch (error) {
+      console.error('OTP email sending failed:', error);
+      throw new Error('Failed to send OTP email');
+    }
+  }
+
   async sendOTP(email, otp, type = 'verification') {
     const subject = type === 'verification' ? 'Verify Your Email - Amzify' : 'Password Reset - Amzify';
     const html = `

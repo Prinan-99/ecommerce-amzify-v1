@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="520" height="220" viewBox="0 0 520 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10" y="10" width="500" height="200" rx="24" ry="24" fill="white" stroke="#111111" stroke-width="8"/>
+  <g fill="#111111" font-family="" font-size="96" font-weight="800" letter-spacing="1">
+    <text x="70" y="135">AMZIFY</text>
+  </g>
+  <path d="M120 150 C180 170, 250 170, 330 135" stroke="#111111" stroke-width="10" stroke-linecap="round" fill="none"/>
+  <path d="M322 122 L360 98" stroke="#111111" stroke-width="10" stroke-linecap="round"/>
+  <path d="M360 98 L348 140" stroke="#111111" stroke-width="10" stroke-linecap="round"/>
+</svg>
