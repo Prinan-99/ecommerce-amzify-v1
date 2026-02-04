@@ -112,14 +112,18 @@ export interface ShipmentUpdate {
 export interface Shipment {
   id: string;
   orderId: string;
+  trackingNumber: string;
   sellerName: string;
   customerName: string;
   deliveryPartnerId?: string;
   deliveryPartnerName?: string;
+  courierPartner: string;
   status: ShipmentStatus;
   origin: string;
   destination: string;
+  currentLocation?: string;
   estimatedDelivery: string;
+  createdAt: string;
   updates: ShipmentUpdate[];
 }
 

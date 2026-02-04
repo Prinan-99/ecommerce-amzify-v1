@@ -192,6 +192,50 @@ class AdminApiService {
   async getSellerProducts(sellerId: string, page: number = 1, limit: number = 20) {
     return this.request(`/products/sellers/${sellerId}/products?page=${page}&limit=${limit}`);
   }
+
+  // Logistics endpoints
+  async getShipments(params?: { status?: string; trackingNumber?: string; orderId?: string; courierPartner?: string; page?: number; limit?: number }) {
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    return this.request(`/admin/shipments${queryString}`);
+  }
+
+  async getShipmentById(shipmentId: string) {
+    return this.request(`/admin/shipments/${shipmentId}`);
+  }
+
+  async updateShipmentStatus(shipmentId: string, status: string, remarks?: string) {
+    return this.request(`/admin/shipments/${shipmentId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, remarks }),
+    });
+  }
+
+  async updateCourierPartner(shipmentId: string, courierPartnerId: string, trackingNumber: string) {
+    return this.request(`/admin/shipments/${shipmentId}/courier`, {
+      method: 'PATCH',
+      body: JSON.stringify({ courierPartnerId, trackingNumber }),
+    });
+  }
+
+  async updateTrackingNumber(shipmentId: string, trackingNumber: string) {
+    return this.request(`/admin/shipments/${shipmentId}/tracking`, {
+      method: 'PATCH',
+      body: JSON.stringify({ trackingNumber }),
+    });
+  }
+
+  async getDeliveryPartners(params?: { page?: number; limit?: number }) {
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    return this.request(`/admin/delivery-partners${queryString}`);
+  }
+
+  async getShipmentTimeline(shipmentId: string) {
+    return this.request(`/admin/shipments/${shipmentId}/timeline`);
+  }
+
+  async getShipmentsStats() {
+    return this.request('/admin/shipments/stats');
+  }
 }
 
 export const adminApiService = new AdminApiService();
