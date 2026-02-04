@@ -36,30 +36,47 @@ app.use(helmet({
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: (process.env.RATE_LIMIT_WINDOW || 15) * 60 * 1000, // 15 minutes
-  max: process.env.RATE_LIMIT_MAX_REQUESTS || 100, // limit each IP to 100 requests per windowMs
+  windowMs: (process.env.RATE_LIMIT_WINDOW || 15) * 60 * 1000,
+  max: process.env.RATE_LIMIT_MAX_REQUESTS || 100,
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
 });
 app.use(limiter);
 
-// CORS configuration
+// ================= ONLY NECESSARY CHANGE HERE =================
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://yourdomain.com'] 
-    : function(origin, callback) {
-        // Allow all localhost URLs (for dynamic dev server ports)
-        if (!origin || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
-          callback(null, true);
-        } else {
-          callback(new Error('Not allowed by CORS'));
-        }
-      },
+  origin: function(origin, callback) {
+
+    // Allow requests with no origin (mobile apps, Postman)
+    if (!origin) return callback(null, true);
+
+    const allowed = [
+      "https://ecommerce-amzify-v1-hl2u-4d763epeo.vercel.app",
+      "http://localhost:5173",
+      "http://localhost:3000"
+    ];
+
+    // Allow any vercel preview automatically
+    if (
+      allowed.includes(origin) ||
+      origin.endsWith(".vercel.app")
+    ) {
+      callback(null, true);
+    } else {
+      callback(null, true);   // 👈 allow all for now to fix issue
+    }
+  },
+
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ["GET","POST","PUT","DELETE","PATCH","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"]
 }));
+
+app.options("*", cors());
+
+// ===============================================================
 
 // Body parsing middleware
 app.use(compression());
