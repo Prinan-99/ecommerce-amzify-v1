@@ -12,22 +12,7 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false
   }
-});
-
-3) Run commands:
-
-rm -rf node_modules package-lock.json
-npm install glob@latest
-npm install
-npm run build
-
-4) Vercel specific:
-
-vercel --prod --force
-
-5) Also check:
-- next.config.js or vite.config.js compatibility  
-- missing env variables  
+});  
 - outdated peer dependencies  
 
 Give me exact modified package.json and commands to run step by step.
