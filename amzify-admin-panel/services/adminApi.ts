@@ -36,7 +36,7 @@ class AdminApiService {
 
   // Auth endpoints
   async login(credentials: LoginCredentials) {
-    const data = await this.request('/auth/login', {
+    const data = await this.request('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
@@ -50,12 +50,12 @@ class AdminApiService {
   }
 
   async getCurrentUser() {
-    return this.request('/auth/me');
+    return this.request('/api/auth/me');
   }
 
   async logout() {
     try {
-      await this.request('/auth/logout', { method: 'POST' });
+      await this.request('/api/auth/logout', { method: 'POST' });
     } finally {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
@@ -68,7 +68,7 @@ class AdminApiService {
       throw new Error('No refresh token available');
     }
 
-    const data = await this.request('/auth/refresh', {
+    const data = await this.request('/api/auth/refresh', {
       method: 'POST',
       body: JSON.stringify({ refreshToken }),
     });

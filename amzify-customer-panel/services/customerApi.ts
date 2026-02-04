@@ -47,7 +47,7 @@ class CustomerApiService {
 
   // Auth endpoints
   async login(credentials: LoginCredentials) {
-    const data = await this.request('/auth/login', {
+    const data = await this.request('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
@@ -61,7 +61,7 @@ class CustomerApiService {
   }
 
   async register(userData: RegisterData) {
-    const data = await this.request('/auth/register/customer', {
+    const data = await this.request('/api/auth/register/customer', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
@@ -75,18 +75,18 @@ class CustomerApiService {
   }
 
   async getCurrentUser() {
-    return this.request('/auth/me');
+    return this.request('/api/auth/me');
   }
 
   async requestPasswordReset(email: string): Promise<ForgotPasswordResponse> {
-    return this.request('/auth/forgot-password', {
+    return this.request('/api/auth/forgot-password', {
       method: 'POST',
       body: JSON.stringify({ email })
     });
   }
 
   async resetPassword(token: string, newPassword: string) {
-    return this.request('/auth/reset-password', {
+    return this.request('/api/auth/reset-password', {
       method: 'POST',
       body: JSON.stringify({ token, newPassword })
     });

@@ -53,7 +53,7 @@ class SellerApiService {
 
   // Auth endpoints
   async login(credentials: LoginCredentials) {
-    const data = await this.request('/auth/login', {
+    const data = await this.request('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
@@ -67,7 +67,7 @@ class SellerApiService {
   }
 
   async register(userData: SellerRegisterData) {
-    const data = await this.request('/auth/register/seller', {
+    const data = await this.request('/api/auth/register/seller', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
@@ -81,12 +81,12 @@ class SellerApiService {
   }
 
   async getCurrentUser() {
-    return this.request('/auth/me');
+    return this.request('/api/auth/me');
   }
 
   async logout() {
     try {
-      await this.request('/auth/logout', { method: 'POST' });
+      await this.request('/api/auth/logout', { method: 'POST' });
     } finally {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
