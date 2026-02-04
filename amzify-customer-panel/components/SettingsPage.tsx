@@ -1,0 +1,211 @@
+import React, { useState } from 'react';
+import { UserProfile } from '../types';
+import { 
+  User, 
+  Lock, 
+  CreditCard, 
+  MapPin, 
+  Bell, 
+  Shield, 
+  HelpCircle, 
+  LogOut,
+  ChevronRight,
+  Edit3,
+  Trash2,
+  Download
+} from 'lucide-react';
+
+interface SettingsPageProps {
+  user: UserProfile;
+  onBack?: () => void;
+}
+
+const SettingsPage: React.FC<SettingsPageProps> = ({ user, onBack }) => {
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+
+  const settingsSections = [
+    {
+      id: 'account',
+      title: 'Account Information',
+      description: 'Manage your personal details and contact information',
+      icon: User,
+      color: 'bg-blue-50 text-blue-600'
+    },
+    {
+      id: 'security',
+      title: 'Security & Privacy',
+      description: 'Password, two-factor authentication, and privacy settings',
+      icon: Lock,
+      color: 'bg-green-50 text-green-600'
+    },
+    {
+      id: 'payment',
+      title: 'Payment Methods',
+      description: 'Manage your cards, wallets, and billing information',
+      icon: CreditCard,
+      color: 'bg-purple-50 text-purple-600'
+    },
+    {
+      id: 'addresses',
+      title: 'Addresses',
+      description: 'Shipping and billing addresses',
+      icon: MapPin,
+      color: 'bg-red-50 text-red-600'
+    },
+    {
+      id: 'notifications',
+      title: 'Notifications',
+      description: 'Email, SMS, and push notification preferences',
+      icon: Bell,
+      color: 'bg-amber-50 text-amber-600'
+    },
+    {
+      id: 'privacy',
+      title: 'Data & Privacy',
+      description: 'Control your data sharing and privacy preferences',
+      icon: Shield,
+      color: 'bg-indigo-50 text-indigo-600'
+    }
+  ];
+
+  const quickActions = [
+    {
+      id: 'download-data',
+      title: 'Download My Data',
+      description: 'Get a copy of your account data',
+      icon: Download,
+      action: () => console.log('Download data')
+    },
+    {
+      id: 'delete-account',
+      title: 'Delete Account',
+      description: 'Permanently delete your account and data',
+      icon: Trash2,
+      action: () => console.log('Delete account'),
+      danger: true
+    }
+  ];
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Header */}
+      <div className="px-6 mb-12">
+        <span className="text-[10px] font-black text-[#C5A059] uppercase tracking-[0.4em] mb-2 block">Account</span>
+        <h2 className="text-4xl font-serif text-gray-900 leading-tight tracking-tight mb-6">Settings</h2>
+        
+        {/* User Quick Info */}
+        <div className="bg-white rounded-[2.5rem] p-6 shadow-xl border border-gray-50 flex items-center gap-4">
+          <div className="w-16 h-16 bg-[#C5A059] rounded-2xl flex items-center justify-center text-white text-xl font-serif font-bold">
+            {user.initial}
+          </div>
+          <div className="flex-1">
+            <h3 className="text-xl font-bold text-gray-900">{user.name}</h3>
+            <p className="text-sm text-gray-500">{user.email}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              <span className="text-xs font-bold text-green-600 uppercase tracking-widest">{user.tier} Member</span>
+            </div>
+          </div>
+          <button className="p-3 bg-gray-50 hover:bg-[#C5A059] hover:text-white rounded-2xl transition-all group">
+            <Edit3 size={18} className="group-hover:rotate-12 transition-transform" />
+          </button>
+        </div>
+      </div>
+
+      {/* Settings Sections */}
+      <div className="px-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {settingsSections.map((section) => (
+            <button
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              className="bg-white rounded-[2.5rem] p-8 shadow-xl border border-gray-50 text-left hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${section.color} group-hover:scale-110 transition-transform duration-500`}>
+                  <section.icon size={24} strokeWidth={1.5} />
+                </div>
+                <ChevronRight size={20} className="text-gray-300 group-hover:text-[#C5A059] group-hover:translate-x-1 transition-all" />
+              </div>
+              
+              <h4 className="text-xl font-serif font-bold text-gray-900 mb-2 group-hover:text-[#C5A059] transition-colors">
+                {section.title}
+              </h4>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {section.description}
+              </p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="px-6 mb-12">
+        <h3 className="text-2xl font-serif font-bold text-gray-900 mb-6">Quick Actions</h3>
+        <div className="space-y-4">
+          {quickActions.map((action) => (
+            <button
+              key={action.id}
+              onClick={action.action}
+              className={`w-full bg-white rounded-[2rem] p-6 shadow-xl border border-gray-50 text-left hover:shadow-2xl transition-all duration-500 group flex items-center justify-between ${
+                action.danger ? 'hover:border-red-200 hover:bg-red-50' : 'hover:border-[#C5A059]/30'
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                  action.danger ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-600'
+                } group-hover:scale-110 transition-transform duration-500`}>
+                  <action.icon size={20} strokeWidth={1.5} />
+                </div>
+                <div>
+                  <h4 className={`font-bold mb-1 ${action.danger ? 'text-red-600' : 'text-gray-900'}`}>
+                    {action.title}
+                  </h4>
+                  <p className="text-sm text-gray-600">{action.description}</p>
+                </div>
+              </div>
+              <ChevronRight size={16} className={`${
+                action.danger ? 'text-red-300 group-hover:text-red-500' : 'text-gray-300 group-hover:text-[#C5A059]'
+              } group-hover:translate-x-1 transition-all`} />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Support & Help */}
+      <div className="px-6">
+        <div className="bg-gradient-to-br from-[#1A1A1A] to-gray-800 rounded-[3rem] p-12 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-80 h-80 gold-gradient opacity-10 blur-[100px] rounded-full -mr-32 -mt-32"></div>
+          
+          <div className="relative z-10 text-center">
+            <div className="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6 backdrop-blur-md border border-white/20">
+              <HelpCircle size={32} className="text-[#C5A059]" />
+            </div>
+            <h3 className="text-2xl font-serif font-bold mb-4">Need Help?</h3>
+            <p className="text-white/60 mb-8 max-w-md mx-auto">
+              Our premium support team is available 24/7 to assist you with any questions or concerns.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button className="bg-white text-black px-8 py-4 rounded-2xl font-bold hover:bg-[#C5A059] hover:text-white transition-all shadow-xl">
+                Contact Support
+              </button>
+              <button className="bg-white/10 backdrop-blur-md text-white px-8 py-4 rounded-2xl font-bold hover:bg-white/20 transition-all border border-white/20">
+                Help Center
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Logout Button */}
+      <div className="px-6 mt-12">
+        <button className="w-full bg-red-50 hover:bg-red-100 text-red-600 rounded-[2rem] p-6 font-bold transition-all border border-red-100 hover:border-red-200 flex items-center justify-center gap-3 group">
+          <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
+          Sign Out
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default SettingsPage;

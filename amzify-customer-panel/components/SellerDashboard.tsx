@@ -93,7 +93,7 @@ const SellerDashboard: React.FC = () => {
       id: `CMP-${Math.floor(Math.random() * 900) + 100}`,
       name: `AI: ${mktGoal} - ${mktProduct}`,
       platform: 'Instagram',
-      status: 'Active',
+      status: 'active',
       reach: 0,
       engagement: '0%',
       product: mktProduct

@@ -1,27 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Loader2, User, UserPlus, ShoppingBag, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/RealAuthContext';
 import { customerApiService } from '../services/customerApi';
-
-
-// Extensible OTP rules (could be fetched from admin config in future)
-const OTP_RULES = {
-  length: 6,
-  expirySeconds: 120,
-  maxAttempts: 5,
-  resendInterval: 30,
-};
-
-// Fallback mock OTP for demo when backend isn't ready.
-const mockSendOtp = async () => {
-  await new Promise((r) => setTimeout(r, 800));
-  return { success: true, otp: '123456' };
-};
-
-const mockVerifyOtp = async (otp: string) => {
-  await new Promise((r) => setTimeout(r, 600));
-  return otp === '123456';
-};
 
 const LoginPortal: React.FC = () => {
   const { login, register, isLoading, error } = useAuth();
@@ -52,43 +32,14 @@ const LoginPortal: React.FC = () => {
   const [resetError, setResetError] = useState('');
   const [useMockReset, setUseMockReset] = useState(false);
 
-  // OTP states
-  const [step, setStep] = useState<'form' | 'otp'>('form');
-  const [otp, setOtp] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [otpError, setOtpError] = useState('');
-  const [useMockOtp, setUseMockOtp] = useState(false);
-  // Removed otpAttempts state (no attempt count needed)
-  const [resendTimer, setResendTimer] = useState(0);
-  const resendIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Signup step state (for 2-step signup process)
+  const [signupStep, setSignupStep] = useState<1 | 2>(1);
+  const [formError, setFormError] = useState('');
 
-  // Start resend timer when OTP is sent
+  // Reset signup step on mode change
   useEffect(() => {
-    if (otpSent && resendTimer === 0) {
-      setResendTimer(OTP_RULES.resendInterval);
-    }
-    if (otpSent && resendTimer > 0) {
-      resendIntervalRef.current = setInterval(() => {
-        setResendTimer((t) => {
-          if (t <= 1) {
-            clearInterval(resendIntervalRef.current!);
-            return 0;
-          }
-          return t - 1;
-        });
-      }, 1000);
-      return () => clearInterval(resendIntervalRef.current!);
-    }
-  }, [otpSent]);
-
-  // Reset OTP state on mode change
-  useEffect(() => {
-    setStep('form');
-    setOtp('');
-    setOtpSent(false);
-    setOtpError('');
-    setResendTimer(0);
+    setSignupStep(1);
+    setFormError('');
   }, [mode]);
 
   // Detect reset token from URL
@@ -109,98 +60,50 @@ const LoginPortal: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
+    
     if (mode === 'login') {
+      // Simple login with email and password
       await login({ email, password });
     } else {
-      if (password !== confirmPassword) {
-        setOtpError('Passwords do not match');
-        return;
-      }
-      if (!email && !phone) {
-        setOtpError('Please enter email or phone');
-        return;
-      }
-      setOtpLoading(true);
-      setOtpError('');
-      try {
-        // Send OTP via backend
-        const resp = await customerApiService.sendOtp(email, 'verification');
-        setUseMockOtp(false);
-        setOtpLoading(false);
-        if (resp?.success) {
-          setOtpSent(true);
-          setStep('otp');
-        } else {
-          setOtpError('Failed to send OTP. Try again.');
+      // Two-step signup process
+      if (signupStep === 1) {
+        // Step 1: Validate name and email, then move to password step
+        if (!firstName.trim() || !lastName.trim()) {
+          setFormError('Please enter your full name');
+          return;
         }
-      } catch (err) {
-        // Fallback to mock OTP if backend not ready
-        const resp = await mockSendOtp();
-        setUseMockOtp(true);
-        setOtpLoading(false);
-        if (resp.success) {
-          setOtpSent(true);
-          setStep('otp');
-        } else {
-          setOtpError('Failed to send OTP. Try again.');
+        if (!email.trim()) {
+          setFormError('Please enter your email address');
+          return;
         }
+        // Proceed to step 2 (password entry)
+        setSignupStep(2);
+      } else {
+        // Step 2: Validate passwords and create account
+        if (!password) {
+          setFormError('Please enter a password');
+          return;
+        }
+        if (password !== confirmPassword) {
+          setFormError('Passwords do not match');
+          return;
+        }
+        if (password.length < 6) {
+          setFormError('Password must be at least 6 characters');
+          return;
+        }
+        // Create account
+        await register({ email, password, firstName, lastName, phone });
       }
     }
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setOtpLoading(true);
-    setOtpError('');
-    try {
-      if (!useMockOtp) {
-        await customerApiService.verifyOtp(email, otp, 'verification');
-      } else {
-        const valid = await mockVerifyOtp(otp);
-        if (!valid) {
-          throw new Error('Invalid OTP. Please try again.');
-        }
-      }
-      setOtpLoading(false);
-      // Proceed with registration (otp will be validated server-side if provided)
-      await register({ email, password, firstName, lastName, phone, otp });
-      setStep('form');
-    } catch (err) {
-      setOtpLoading(false);
-      const errorMessage = err instanceof Error ? err.message : 'Invalid OTP. Please try again.';
-      setOtpError(errorMessage);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    if (resendTimer > 0) return;
-    setOtpLoading(true);
-    setOtpError('');
-    try {
-      const resp = await customerApiService.sendOtp(email, 'verification');
-      setUseMockOtp(false);
-      setOtpLoading(false);
-      if (resp?.success) {
-        setOtpSent(true);
-        setResendTimer(OTP_RULES.resendInterval);
-        setOtp('');
-        setOtpError('');
-      } else {
-        setOtpError('Failed to resend OTP.');
-      }
-    } catch (err) {
-      const resp = await mockSendOtp();
-      setUseMockOtp(true);
-      setOtpLoading(false);
-      if (resp.success) {
-        setOtpSent(true);
-        setResendTimer(OTP_RULES.resendInterval);
-        setOtp('');
-        setOtpError('');
-      } else {
-        setOtpError('Failed to resend OTP.');
-      }
-    }
+  const handleBackToStep1 = () => {
+    setSignupStep(1);
+    setFormError('');
+    setPassword('');
+    setConfirmPassword('');
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -255,7 +158,7 @@ const LoginPortal: React.FC = () => {
   };
 
   const handleDemoLogin = () => {
-    setEmail('customer@example.com');
+    setEmail('customer@amzify.com');
     setPassword('customer123');
     setMode('login');
   };
@@ -454,57 +357,32 @@ const LoginPortal: React.FC = () => {
               </button>
             </div>
           </form>
-        ) : mode === 'register' && step === 'otp' ? (
-          <form onSubmit={handleVerifyOtp} className="space-y-4">
-            <div className="mb-2 text-center text-indigo-700 font-bold">OTP sent to {email || phone}</div>
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Enter OTP</label>
-              <input
-                type="text"
-                maxLength={OTP_RULES.length}
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all tracking-widest text-lg text-center font-mono"
-                placeholder={Array(OTP_RULES.length).fill('•').join('')}
-                disabled={otpLoading}
-              />
-            </div>
-            {otpError && (
-              <div className="p-2 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl flex items-center gap-2 mb-2">
-                <AlertTriangle className="w-4 h-4" />
-                <span>{otpError}</span>
-              </div>
-            )}
-            <button
-              type="submit"
-              disabled={otpLoading || otp.length !== OTP_RULES.length}
-              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-2xl font-black hover:from-indigo-700 hover:to-purple-700 transition-all shadow-xl shadow-indigo-500/30 active:transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-            >
-              {otpLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-              Verify OTP
-            </button>
-            <div className="flex items-center justify-between mt-2 text-xs">
-              <button
-                type="button"
-                onClick={handleResendOtp}
-                disabled={resendTimer > 0 || otpLoading}
-                className="text-indigo-600 font-bold disabled:text-slate-400"
-              >
-                Resend OTP{resendTimer > 0 ? ` (${resendTimer}s)` : ''}
-              </button>
-              <button
-                type="button"
-                onClick={() => setStep('form')}
-                className="text-slate-500 hover:text-slate-700"
-              >
-                Edit Info
-              </button>
-            </div>
-            <div className="text-slate-400 text-xs mt-2 text-center">OTP expires in {OTP_RULES.expirySeconds}s.</div>
-          </form>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'register' && (
+              <div className="mb-4 text-center">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                    signupStep === 1 ? 'bg-indigo-600 text-white' : 'bg-green-600 text-white'
+                  }`}>
+                    {signupStep === 2 ? '✓' : '1'}
+                  </div>
+                  <div className={`h-1 w-12 ${
+                    signupStep === 2 ? 'bg-indigo-600' : 'bg-slate-200'
+                  }`}></div>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                    signupStep === 2 ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'
+                  }`}>
+                    2
+                  </div>
+                </div>
+                <p className="text-sm font-bold text-slate-600">
+                  {signupStep === 1 ? 'Enter your details' : 'Create your password'}
+                </p>
+              </div>
+            )}
+
+            {mode === 'register' && signupStep === 1 ? (
               <>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -533,7 +411,19 @@ const LoginPortal: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                    placeholder="customer@example.com"
+                    disabled={isLoading}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number (Optional)</label>
                   <input
                     type="tel"
                     value={phone}
@@ -544,93 +434,119 @@ const LoginPortal: React.FC = () => {
                   />
                 </div>
               </>
-            )}
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
-                placeholder="customer@example.com"
-                disabled={isLoading}
-              />
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-bold text-slate-700">Password</label>
-                {mode === 'login' ? (
+            ) : mode === 'register' && signupStep === 2 ? (
+              <>
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-4">
+                  <div className="text-sm font-bold text-slate-700 mb-1">{firstName} {lastName}</div>
+                  <div className="text-xs text-slate-500">{email}</div>
                   <button
                     type="button"
-                    onClick={() => setShowLoginPassword((prev) => !prev)}
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
+                    onClick={handleBackToStep1}
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700 mt-2"
                   >
-                    {showLoginPassword ? 'Hide' : 'Show'}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowRegisterPassword((prev) => !prev)}
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
-                  >
-                    {showRegisterPassword ? 'Hide' : 'Show'}
-                  </button>
-                )}
-              </div>
-              <input
-                type={mode === 'login' ? (showLoginPassword ? 'text' : 'password') : (showRegisterPassword ? 'text' : 'password')}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
-                placeholder="••••••••"
-                disabled={isLoading}
-              />
-            </div>
-            {mode === 'login' && (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setView('forgot');
-                    setForgotEmail(email);
-                    setForgotError('');
-                    setForgotMessage('');
-                  }}
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
-                >
-                  Forgot Password?
-                </button>
-              </div>
-            )}
-            {mode === 'register' && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-bold text-slate-700">Confirm Password</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowRegisterConfirmPassword((prev) => !prev)}
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
-                  >
-                    {showRegisterConfirmPassword ? 'Hide' : 'Show'}
+                    Edit Details
                   </button>
                 </div>
-                <input
-                  type={showRegisterConfirmPassword ? 'text' : 'password'}
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
-                  placeholder="••••••••"
-                  disabled={isLoading}
-                />
-              </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-bold text-slate-700">New Password</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowRegisterPassword((prev) => !prev)}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
+                    >
+                      {showRegisterPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  <input
+                    type={showRegisterPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                    placeholder="••••••••"
+                    disabled={isLoading}
+                    minLength={6}
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Minimum 6 characters</p>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-bold text-slate-700">Confirm Password</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowRegisterConfirmPassword((prev) => !prev)}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
+                    >
+                      {showRegisterConfirmPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  <input
+                    type={showRegisterConfirmPassword ? 'text' : 'password'}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                    placeholder="••••••••"
+                    disabled={isLoading}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                    placeholder="customer@example.com"
+                    disabled={isLoading}
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-bold text-slate-700">Password</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowLoginPassword((prev) => !prev)}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
+                    >
+                      {showLoginPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  <input
+                    type={showLoginPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                    placeholder="••••••••"
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setView('forgot');
+                      setForgotEmail(email);
+                      setForgotError('');
+                      setForgotMessage('');
+                    }}
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              </>
             )}
-            {otpError && (
+            {formError && (
               <div className="p-2 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl flex items-center gap-2 mb-2">
                 <AlertTriangle className="w-4 h-4" />
-                <span>{otpError}</span>
+                <span>{formError}</span>
               </div>
             )}
             {authNotice && (
@@ -650,7 +566,7 @@ const LoginPortal: React.FC = () => {
                   {mode === 'login' ? 'Signing In...' : 'Creating Account...'}
                 </>
               ) : (
-                mode === 'login' ? 'Sign In' : 'Create Account'
+                mode === 'login' ? 'Sign In' : (signupStep === 1 ? 'Continue to Password' : 'Create Account')
               )}
             </button>
           </form>

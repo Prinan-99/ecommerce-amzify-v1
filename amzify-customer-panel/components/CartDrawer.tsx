@@ -62,11 +62,15 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, items, onUpdat
               {items.map((item) => (
                 <div key={item.id} className="flex gap-6 items-start group">
                   <div className="w-28 h-36 rounded-2xl overflow-hidden bg-slate-50 flex-shrink-0 shadow-sm border border-slate-100">
-                    <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    <img 
+                      src={item.images && item.images.length > 0 ? item.images[0] : (item.image || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400')} 
+                      alt={item.name || item.title || 'Product'} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start mb-1">
-                      <h3 className="font-bold text-slate-900 text-base">{item.name}</h3>
+                      <h3 className="font-bold text-slate-900 text-base">{item.name || item.title || 'Product'}</h3>
                       <button 
                         onClick={() => onRemove(item.id)}
                         className="text-slate-300 hover:text-rose-500 transition-colors"
@@ -74,7 +78,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, items, onUpdat
                         <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
-                    <p className="text-sm font-black text-indigo-600 mb-4">{formatINR(item.price)}</p>
+                    <p className="text-sm font-black text-indigo-600 mb-4">{formatINR(item.price || 0)}</p>
                     
                     <div className="flex items-center bg-slate-50 w-fit p-1 rounded-xl border border-slate-200">
                       <button 

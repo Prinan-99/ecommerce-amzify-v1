@@ -290,7 +290,8 @@ router.post('/register/customer', [
           first_name: firstName,
           last_name: lastName,
           phone,
-          is_verified: isVerified
+          is_verified: true, // Always verify customers on signup (no OTP required)
+          is_active: true
         },
         select: {
           id: true,
@@ -554,6 +555,11 @@ router.post('/login', [
       const isValidPassword = await bcrypt.compare(password, user.password_hash);
       if (!isValidPassword) {
         return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      // Check if user is verified (sellers must be verified, customers auto-verified)
+      if (user.role === 'seller' && !user.is_verified) {
+        return res.status(403).json({ error: 'Email not verified. Please verify your email first.' });
       }
 
       // Check if seller is approved
@@ -949,6 +955,62 @@ router.post('/delete-account', authenticateToken, [
   } catch (error) {
     console.error('Delete account error:', error);
     res.status(500).json({ error: 'Failed to process account deletion request' });
+  }
+});
+
+// Email OTP Routes
+import otpService from '../services/otpService.js';
+
+// Send Email OTP
+router.post('/send-email-otp', [
+  body('email').isEmail().normalizeEmail()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email } = req.body;
+
+    await otpService.sendEmailOtp(email);
+
+    res.json({ 
+      success: true, 
+      message: 'OTP sent to email' 
+    });
+  } catch (error) {
+    console.error('Send email OTP error:', error);
+    res.status(500).json({ 
+      error: 'Failed to send OTP' 
+    });
+  }
+});
+
+// Verify Email OTP
+router.post('/verify-email-otp', [
+  body('email').isEmail().normalizeEmail(),
+  body('otp').isLength({ min: 6, max: 6 }).isNumeric()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, otp } = req.body;
+
+    await otpService.verifyEmailOtp(email, otp);
+
+    res.json({ 
+      success: true, 
+      message: 'Email verified successfully' 
+    });
+  } catch (error) {
+    console.error('Verify email OTP error:', error);
+    res.status(400).json({ 
+      error: error.message || 'OTP verification failed' 
+    });
   }
 });
 

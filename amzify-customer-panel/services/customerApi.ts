@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'http://localhost:5009/api';
 
 interface LoginCredentials {
   email: string;
@@ -9,7 +9,6 @@ interface RegisterData extends LoginCredentials {
   firstName: string;
   lastName: string;
   phone?: string;
-  otp?: string;
 }
 
 interface ForgotPasswordResponse {
@@ -77,20 +76,6 @@ class CustomerApiService {
 
   async getCurrentUser() {
     return this.request('/auth/me');
-  }
-
-  async sendOtp(email: string, type: 'verification' | 'password_reset') {
-    return this.request('/auth/send-otp', {
-      method: 'POST',
-      body: JSON.stringify({ email, type })
-    });
-  }
-
-  async verifyOtp(email: string, otp: string, type: 'verification' | 'password_reset') {
-    return this.request('/auth/verify-otp', {
-      method: 'POST',
-      body: JSON.stringify({ email, otp, type })
-    });
   }
 
   async requestPasswordReset(email: string): Promise<ForgotPasswordResponse> {
