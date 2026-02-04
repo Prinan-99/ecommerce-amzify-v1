@@ -1581,7 +1581,8 @@ const FeedbackTab: React.FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch('http://localhost:5000/api/admin/feedback', {
+      const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+      const response = await fetch(`${API_BASE_URL}/api/admin/feedback`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -1604,7 +1605,8 @@ const FeedbackTab: React.FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
   const fetchFeedbackStats = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch('http://localhost:5000/api/admin/feedback/stats', {
+      const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+      const response = await fetch(`${API_BASE_URL}/api/admin/feedback/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -1627,7 +1629,8 @@ const FeedbackTab: React.FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
     setIsResponding(true);
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`http://localhost:5000/api/admin/feedback/${feedbackId}/respond`, {
+      const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+      const response = await fetch(`${API_BASE_URL}/api/admin/feedback/${feedbackId}/respond`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1656,7 +1659,8 @@ const FeedbackTab: React.FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
   const handleUpdateStatus = async (feedbackId: string, status: string) => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`http://localhost:5000/api/admin/feedback/${feedbackId}`, {
+      const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+      const response = await fetch(`${API_BASE_URL}/api/admin/feedback/${feedbackId}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

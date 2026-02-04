@@ -104,14 +104,16 @@ const App: React.FC = () => {
       
       // Load categories and products in parallel with fallbacks
       try {
-        const categoriesResponse = await fetch('http://localhost:5009/api/categories').then(res => res.json());
+        const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+        const categoriesResponse = await fetch(`${API_BASE_URL}/api/categories`).then(res => res.json());
         setCategories(categoriesResponse.categories || getMockCategories());
       } catch {
         setCategories(getMockCategories());
       }
       
       try {
-        const productsResponse = await fetch('http://localhost:5009/api/products').then(res => res.json());
+        const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+        const productsResponse = await fetch(`${API_BASE_URL}/api/products`).then(res => res.json());
         setProducts(productsResponse.products || getMockProducts());
       } catch {
         setProducts(getMockProducts());
@@ -141,20 +143,16 @@ const App: React.FC = () => {
       
       // Load categories and products for guest browsing with fallbacks
       try {
-        const categoriesResponse = await fetch('http://localhost:5009/api/categories').then(res => res.json());
+        const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+        const categoriesResponse = await fetch(`${API_BASE_URL}/api/categories`).then(res => res.json());
         setCategories(categoriesResponse.categories || getMockCategories());
       } catch {
         setCategories(getMockCategories());
       }
 
       try {
-        const productsResponse = await fetch('http://localhost:5009/api/products').then(res => res.json());
-        setProducts(productsResponse.products || getMockProducts());
-      } catch {
-        setProducts(getMockProducts());
-      }
-
-      setCart([]); // Empty cart for guests
+        const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+        const productsResponse = await fetch(`${API_BASE_URL}/api/products`).then(res => res.json());
     } catch (err) {
       console.error('Load data error:', err);
       // Use mock data as fallback
@@ -795,7 +793,8 @@ const App: React.FC = () => {
         onClose={() => setIsFeedbackOpen(false)}
         onSubmit={async (data) => {
           try {
-            const response = await fetch('http://localhost:5009/api/auth/feedback', {
+            const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+            const response = await fetch(`${API_BASE_URL}/api/auth/feedback`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

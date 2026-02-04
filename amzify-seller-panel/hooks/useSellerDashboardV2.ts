@@ -50,7 +50,8 @@ export const useSellerDashboard = () => {
         throw new Error('No auth token found');
       }
 
-      const response = await axios.get('http://localhost:5000/api/seller/dashboard', {
+      const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+      const response = await axios.get(`${API_BASE_URL}/api/seller/dashboard`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

@@ -1146,7 +1146,8 @@ const OrdersTab: React.FC<{ orders: any[]; onRefresh: () => void; onStatusUpdate
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     setIsUpdating(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/orders/seller/orders/${orderId}/status`, {
+      const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+      const response = await fetch(`${API_BASE_URL}/api/orders/seller/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1177,9 +1178,10 @@ const OrdersTab: React.FC<{ orders: any[]; onRefresh: () => void; onStatusUpdate
     
     setIsUpdating(true);
     try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
       await Promise.all(
         selectedOrders.map(orderId => 
-          fetch(`http://localhost:5000/api/orders/seller/orders/${orderId}/status`, {
+          fetch(`${API_BASE_URL}/api/orders/seller/orders/${orderId}/status`, {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',

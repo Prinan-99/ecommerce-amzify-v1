@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = process.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
 const SELLER_EMAIL = 'seller@example.com';
 const SELLER_PASSWORD = 'seller123';
 

@@ -160,7 +160,7 @@ router.post('/forgot-password', [
       { expiresIn: PASSWORD_RESET_EXPIRES_IN }
     );
 
-    const frontendBase = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendBase = process.env.FRONTEND_URL ?? process.env.VERCEL_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
     const resetLink = `${frontendBase}/?resetToken=${encodeURIComponent(resetToken)}`;
 
     const emailSent = await emailService.sendPasswordResetLink(email, resetLink);
