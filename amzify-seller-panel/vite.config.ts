@@ -1,34 +1,18 @@
-I am facing Vercel deployment warnings:
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
-- deprecated node-domexception@1.0.0  
-- deprecated glob@10.5.0  
-
-I want you to fix my project for clean deployment:
-
-1. Remove old dependencies and regenerate lock file  
-2. Upgrade deprecated packages to latest stable versions  
-3. Ensure Node 18 compatibility  
-4. Add proper build scripts for Vercel  
-5. Force clean install
-
-Do the following changes:
-
-A. Update package.json:
-- Add engines node 18
-- Ensure build script exists
-- Update glob to latest
-
-B. Create / update these files:
-
-1) .nvmrc  
-Content:
-18
-
-2) Add to package.json:
-
-"engines": {
-  "node": "18.x"
-}
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 3000,
+    open: true
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false
+  }
+});
 
 3) Run commands:
 
