@@ -514,16 +514,6 @@ router.post('/login', [
 
     const { email, password } = req.body;
 
-    // Get user with seller profile if applicable
-    const user = await prisma.users.findUnique({
-      where: { 
-        email
-      },
-      include: {
-        seller_profiles: {
-          select: {
-            company_name: true,
-            is_approved: true
     try {
       // Get user with seller profile if applicable
       const user = await prisma.users.findUnique({
@@ -551,26 +541,6 @@ router.post('/login', [
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
-    // Check if user account is active
-    if (!user.is_active) {
-      return res.status(401).json({ error: 'Account is deactivated. Please contact support.' });
-    }
-
-    // Check password
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    // Check if seller has profile and is approved
-    if (user.role === 'seller') {
-      if (user.seller_profiles.length === 0) {
-        return res.status(403).json({ error: 'Seller profile not found. Please contact support.' });
-      }
-      if (!user.seller_profiles[0].is_approved) {
-        return res.status(403).json({ error: 'Seller account pending approval' });
-      }
-    }
       // Check if seller is approved
       if (user.role === 'seller' && user.seller_profiles[0] && !user.seller_profiles[0].is_approved) {
         return res.status(403).json({ error: 'Seller account pending approval' });
