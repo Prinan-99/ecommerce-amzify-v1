@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
+import FeedbackModal from './FeedbackModal';
 import { 
   User, 
   Lock, 
@@ -12,7 +13,9 @@ import {
   ChevronRight,
   Edit3,
   Trash2,
-  Download
+  Download,
+  MessageSquare,
+  X
 } from 'lucide-react';
 
 interface SettingsPageProps {
@@ -22,6 +25,7 @@ interface SettingsPageProps {
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ user, onBack }) => {
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   const settingsSections = [
     {
@@ -65,6 +69,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, onBack }) => {
       description: 'Control your data sharing and privacy preferences',
       icon: Shield,
       color: 'bg-indigo-50 text-indigo-600'
+    },
+    {
+      id: 'feedback',
+      title: 'Share Feedback',
+      description: 'Help us improve by sharing your experience and suggestions',
+      icon: MessageSquare,
+      color: 'bg-rose-50 text-rose-600'
     }
   ];
 
@@ -118,7 +129,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, onBack }) => {
           {settingsSections.map((section) => (
             <button
               key={section.id}
-              onClick={() => setActiveSection(section.id)}
+              onClick={() => {
+                if (section.id === 'feedback') {
+                  setIsFeedbackOpen(true);
+                } else {
+                  setActiveSection(section.id);
+                }
+              }}
               className="bg-white rounded-[2.5rem] p-8 shadow-xl border border-gray-50 text-left hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group"
             >
               <div className="flex items-start justify-between mb-4">
@@ -204,7 +221,253 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, onBack }) => {
           Sign Out
         </button>
       </div>
+
+      {/* Detail Modal */}
+      {activeSection && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-300">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-gradient-to-r from-[#C5A059] to-amber-600 text-white px-8 py-8 flex items-center justify-between rounded-t-[2.5rem]">
+              <div>
+                <h3 className="text-2xl font-bold mb-1">
+                  {settingsSections.find(s => s.id === activeSection)?.title}
+                </h3>
+                <p className="text-amber-100 text-sm">
+                  {settingsSections.find(s => s.id === activeSection)?.description}
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveSection(null)}
+                className="p-3 hover:bg-white/20 rounded-xl transition-all"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-8 space-y-6">
+              {activeSection === 'account' && (
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-3">Full Name</label>
+                    <input
+                      type="text"
+                      defaultValue={user.name}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:border-[#C5A059] focus:outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-3">Email Address</label>
+                    <input
+                      type="email"
+                      defaultValue={user.email}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:border-[#C5A059] focus:outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-3">Phone Number</label>
+                    <input
+                      type="tel"
+                      placeholder="Enter your phone number"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:border-[#C5A059] focus:outline-none transition-all"
+                    />
+                  </div>
+                  <button className="w-full bg-[#C5A059] text-white py-3 rounded-2xl font-bold hover:bg-amber-700 transition-all">
+                    Save Changes
+                  </button>
+                </div>
+              )}
+
+              {activeSection === 'security' && (
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-3">Current Password</label>
+                    <input
+                      type="password"
+                      placeholder="Enter your current password"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:border-[#C5A059] focus:outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-3">New Password</label>
+                    <input
+                      type="password"
+                      placeholder="Enter new password"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:border-[#C5A059] focus:outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-3">Confirm Password</label>
+                    <input
+                      type="password"
+                      placeholder="Confirm new password"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:border-[#C5A059] focus:outline-none transition-all"
+                    />
+                  </div>
+                  <label className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl cursor-pointer hover:bg-gray-100 transition-all">
+                    <input type="checkbox" className="rounded" />
+                    <span className="font-medium text-gray-900">Enable Two-Factor Authentication</span>
+                  </label>
+                  <button className="w-full bg-[#C5A059] text-white py-3 rounded-2xl font-bold hover:bg-amber-700 transition-all">
+                    Update Security
+                  </button>
+                </div>
+              )}
+
+              {activeSection === 'payment' && (
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-3">Card Number</label>
+                    <input
+                      type="text"
+                      placeholder="1234 5678 9012 3456"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:border-[#C5A059] focus:outline-none transition-all font-mono"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-900 mb-3">Expiry Date</label>
+                      <input
+                        type="text"
+                        placeholder="MM/YY"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:border-[#C5A059] focus:outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-900 mb-3">CVV</label>
+                      <input
+                        type="text"
+                        placeholder="123"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:border-[#C5A059] focus:outline-none transition-all font-mono"
+                      />
+                    </div>
+                  </div>
+                  <button className="w-full bg-[#C5A059] text-white py-3 rounded-2xl font-bold hover:bg-amber-700 transition-all">
+                    Add Payment Method
+                  </button>
+                </div>
+              )}
+
+              {activeSection === 'addresses' && (
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-3">Street Address</label>
+                    <input
+                      type="text"
+                      placeholder="Enter your street address"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:border-[#C5A059] focus:outline-none transition-all"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-900 mb-3">City</label>
+                      <input
+                        type="text"
+                        placeholder="City"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:border-[#C5A059] focus:outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-900 mb-3">State</label>
+                      <input
+                        type="text"
+                        placeholder="State"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:border-[#C5A059] focus:outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-3">Postal Code</label>
+                    <input
+                      type="text"
+                      placeholder="Postal code"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:border-[#C5A059] focus:outline-none transition-all"
+                    />
+                  </div>
+                  <button className="w-full bg-[#C5A059] text-white py-3 rounded-2xl font-bold hover:bg-amber-700 transition-all">
+                    Save Address
+                  </button>
+                </div>
+              )}
+
+              {activeSection === 'notifications' && (
+                <div className="space-y-4">
+                  <label className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl cursor-pointer hover:bg-gray-100 transition-all">
+                    <span className="font-medium text-gray-900">Email Notifications</span>
+                    <input type="checkbox" defaultChecked className="rounded" />
+                  </label>
+                  <label className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl cursor-pointer hover:bg-gray-100 transition-all">
+                    <span className="font-medium text-gray-900">SMS Notifications</span>
+                    <input type="checkbox" defaultChecked className="rounded" />
+                  </label>
+                  <label className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl cursor-pointer hover:bg-gray-100 transition-all">
+                    <span className="font-medium text-gray-900">Push Notifications</span>
+                    <input type="checkbox" className="rounded" />
+                  </label>
+                  <label className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl cursor-pointer hover:bg-gray-100 transition-all">
+                    <span className="font-medium text-gray-900">Marketing Emails</span>
+                    <input type="checkbox" className="rounded" />
+                  </label>
+                  <button className="w-full bg-[#C5A059] text-white py-3 rounded-2xl font-bold hover:bg-amber-700 transition-all mt-4">
+                    Save Preferences
+                  </button>
+                </div>
+              )}
+
+              {activeSection === 'privacy' && (
+                <div className="space-y-4">
+                  <label className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl cursor-pointer hover:bg-gray-100 transition-all">
+                    <span className="font-medium text-gray-900">Share profile with sellers</span>
+                    <input type="checkbox" className="rounded" />
+                  </label>
+                  <label className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl cursor-pointer hover:bg-gray-100 transition-all">
+                    <span className="font-medium text-gray-900">Allow personalized recommendations</span>
+                    <input type="checkbox" defaultChecked className="rounded" />
+                  </label>
+                  <label className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl cursor-pointer hover:bg-gray-100 transition-all">
+                    <span className="font-medium text-gray-900">Share usage data for improvement</span>
+                    <input type="checkbox" defaultChecked className="rounded" />
+                  </label>
+                  <button className="w-full bg-[#C5A059] text-white py-3 rounded-2xl font-bold hover:bg-amber-700 transition-all mt-4">
+                    Save Privacy Settings
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+
+    <FeedbackModal
+      isOpen={isFeedbackOpen}
+      onClose={() => setIsFeedbackOpen(false)}
+      onSubmit={async (data) => {
+        try {
+          const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5009';
+          const response = await fetch(`${API_BASE_URL}/api/auth/feedback`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              rating: data.rating,
+              message: data.comment,
+              type: 'general'
+            })
+          });
+
+          if (response.ok) {
+            console.log('Feedback submitted successfully');
+            setIsFeedbackOpen(false);
+          } else {
+            console.error('Failed to submit feedback');
+          }
+        } catch (error) {
+          console.error('Feedback submission error:', error);
+        }
+      }}
+    />
   );
 };
 

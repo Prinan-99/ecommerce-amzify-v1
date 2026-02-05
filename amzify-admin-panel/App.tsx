@@ -217,7 +217,7 @@ const App: React.FC = () => {
               </div>
             </div>
           ) : (
-            <>
+            <div className="max-w-[1440px] mx-auto">
               {activeTab === 'dashboard' && <DashboardTab stats={stats} />}
               {activeTab === 'users' && (
                 <UsersTab
@@ -243,7 +243,7 @@ const App: React.FC = () => {
               {activeTab === 'feedback' && <FeedbackTab onRefresh={loadAdminData} />}
               {activeTab === 'logistics' && <LogisticsTab onRefresh={loadAdminData} />}
               {activeTab === 'settings' && <SettingsTab />}
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -1482,81 +1482,145 @@ const LogisticsTab: React.FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
 
 // Settings Tab Component
 const SettingsTab: React.FC = () => {
+  const [settings, setSettings] = React.useState({
+    platformName: 'Amzify',
+    supportEmail: 'support@amzify.com',
+    commissionRate: '5%',
+    platformFee: '$2.0'
+  });
+
+  const handleSave = () => {
+    alert('Settings saved successfully!');
+  };
+
   return (
-    <div className="bg-white rounded-[4rem] border border-slate-100 shadow-sm p-12">
-      <h3 className="text-3xl font-black tracking-tighter mb-8">System Settings</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="space-y-6">
-          <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-            <h4 className="font-bold text-slate-900 mb-4">Platform Configuration</h4>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Platform Name</label>
-                <input 
-                  type="text" 
-                  value="Amzify"
-                  className="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Support Email</label>
-                <input 
-                  type="email" 
-                  value="support@amzify.com"
-                  className="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-            </div>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-2xl p-8 shadow-md">
+        <h2 className="text-4xl font-black text-red-950 mb-2">System Settings</h2>
+        <p className="text-red-700 font-medium">Manage platform configuration and system preferences</p>
+      </div>
 
-          <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-            <h4 className="font-bold text-slate-900 mb-4">Security Settings</h4>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-700">Two-Factor Authentication</span>
-                <button className="px-3 py-1 bg-green-600 text-white rounded-lg text-xs">Enabled</button>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-700">Session Timeout</span>
-                <span className="text-sm text-slate-500">30 minutes</span>
-              </div>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        {/* Platform Configuration Card */}
+        <div className="bg-white border-2 border-slate-200 rounded-2xl p-8 shadow-md hover:shadow-lg transition-all">
+          <div className="flex items-center mb-6">
+            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
+              <span className="text-white font-black">⚙️</span>
+            </div>
+            <h3 className="text-2xl font-black text-slate-950">Platform Configuration</h3>
+          </div>
+          <div className="space-y-5 border-t border-slate-100 pt-6">
+            <div>
+              <label className="block text-sm font-bold text-slate-900 mb-3">Platform Name</label>
+              <input 
+                type="text" 
+                value={settings.platformName}
+                onChange={(e) => setSettings({...settings, platformName: e.target.value})}
+                className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-slate-900 font-medium"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-900 mb-3">Support Email</label>
+              <input 
+                type="email" 
+                value={settings.supportEmail}
+                onChange={(e) => setSettings({...settings, supportEmail: e.target.value})}
+                className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-slate-900 font-medium"
+              />
             </div>
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-            <h4 className="font-bold text-slate-900 mb-4">Payment Settings</h4>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-700">Payment Gateway</span>
-                <span className="text-sm text-slate-500">Razorpay</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-700">Commission Rate</span>
-                <span className="text-sm text-slate-500">5%</span>
-              </div>
+        {/* Security Settings Card */}
+        <div className="bg-white border-2 border-slate-200 rounded-2xl p-8 shadow-md hover:shadow-lg transition-all">
+          <div className="flex items-center mb-6">
+            <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center mr-3">
+              <span className="text-white font-black">🔒</span>
             </div>
+            <h3 className="text-2xl font-black text-slate-950">Security Settings</h3>
           </div>
-
-          <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-            <h4 className="font-bold text-slate-900 mb-4">System Status</h4>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-700">Database</span>
-                <span className="text-sm text-green-600 font-medium">Healthy</span>
+          <div className="space-y-5 border-t border-slate-100 pt-6">
+            <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div>
+                <p className="font-bold text-slate-900">Two-Factor Authentication</p>
+                <p className="text-xs text-slate-600">Enhanced security protocol</p>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-700">API Status</span>
-                <span className="text-sm text-green-600 font-medium">Online</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-700">Last Backup</span>
-                <span className="text-sm text-slate-500">2 hours ago</span>
-              </div>
+              <button className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700">Enabled</button>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-slate-100 rounded-lg">
+              <span className="font-bold text-slate-900">Session Timeout</span>
+              <span className="font-bold text-slate-700 bg-slate-200 px-3 py-1 rounded">30 min</span>
             </div>
           </div>
         </div>
+
+        {/* Payment Settings Card */}
+        <div className="bg-white border-2 border-slate-200 rounded-2xl p-8 shadow-md hover:shadow-lg transition-all">
+          <div className="flex items-center mb-6">
+            <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center mr-3">
+              <span className="text-white font-black">💳</span>
+            </div>
+            <h3 className="text-2xl font-black text-slate-950">Payment Settings</h3>
+          </div>
+          <div className="space-y-5 border-t border-slate-100 pt-6">
+            <div className="flex items-center justify-between p-4 bg-purple-50 border border-purple-200 rounded-lg">
+              <span className="font-bold text-slate-900">Payment Gateway</span>
+              <span className="font-bold text-purple-700 bg-purple-100 px-3 py-1 rounded">Razorpay</span>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-slate-100 rounded-lg">
+              <span className="font-bold text-slate-900">Commission Rate</span>
+              <span className="font-bold text-slate-700 bg-slate-200 px-3 py-1 rounded">{settings.commissionRate}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* System Status Card */}
+        <div className="bg-white border-2 border-slate-200 rounded-2xl p-8 shadow-md hover:shadow-lg transition-all">
+          <div className="flex items-center mb-6">
+            <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center mr-3">
+              <span className="text-white font-black">📊</span>
+            </div>
+            <h3 className="text-2xl font-black text-slate-950">System Status</h3>
+          </div>
+          <div className="space-y-4 border-t border-slate-100 pt-6">
+            <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+              <span className="font-bold text-slate-900">Database</span>
+              <span className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-600 rounded-full"></div>
+                <span className="font-bold text-green-700">Healthy</span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+              <span className="font-bold text-slate-900">API Status</span>
+              <span className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-600 rounded-full"></div>
+                <span className="font-bold text-green-700">Online</span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-slate-100 rounded-lg">
+              <span className="font-bold text-slate-900">Last Backup</span>
+              <span className="font-bold text-slate-600">2 hours ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Button */}
+      <div className="flex justify-end gap-4 pt-6">
+        <button 
+          className="px-8 py-3 border-2 border-slate-300 text-slate-900 rounded-lg font-bold hover:bg-slate-50 transition-all"
+        >
+          Cancel
+        </button>
+        <button 
+          onClick={handleSave}
+          className="px-8 py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
+        >
+          Save Changes
+        </button>
       </div>
     </div>
   );

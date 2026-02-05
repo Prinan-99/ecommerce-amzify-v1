@@ -3,7 +3,7 @@ import { X, User, Package, MapPin, CreditCard, Settings, Eye, Truck, Calendar, C
 import { useAuth } from '../context/RealAuthContext';
 import { customerApiService } from '../services/customerApi';
 import { MOCK_USER, MOCK_ORDERS, MOCK_WISHLIST, BENEFITS } from '../constants';
-import { UserProfile, Order as ProfileOrder, WishlistItem } from '../types';
+import { UserProfile, Order as ProfileOrder, WishlistItem, OrderStatus } from '../types';
 import MembershipCard from './MembershipCard';
 import BenefitsSection from './BenefitsSection';
 import OrderHistory from './OrderHistory';
@@ -359,7 +359,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
                       <div className="flex justify-between">
                         <span className="text-slate-600">Delivered</span>
                         <span className="font-bold text-green-600">
-                          {profileOrders.filter(o => o.status === 'Delivered').length}
+                          {profileOrders.filter(o => o.status === OrderStatus.DELIVERED).length}
                         </span>
                       </div>
                       <div className="flex justify-between">

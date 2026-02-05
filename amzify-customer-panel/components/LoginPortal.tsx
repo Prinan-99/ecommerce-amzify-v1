@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Loader2, User, UserPlus, ShoppingBag, Sparkles } from 'lucide-react';
+import { AlertTriangle, Loader2, User, UserPlus, ShoppingBag, Sparkles, CheckCircle, X } from 'lucide-react';
 import { useAuth } from '../context/RealAuthContext';
 import { customerApiService } from '../services/customerApi';
 
@@ -52,6 +52,49 @@ const LoginPortal: React.FC = () => {
     }
   }, []);
 
+  // Validation Functions
+  const validateEmail = (emailStr: string): boolean => {
+    // Check if email contains uppercase letters
+    if (emailStr !== emailStr.toLowerCase()) {
+      return false;
+    }
+    // Check for valid email format with @ and domain
+    const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
+    return emailRegex.test(emailStr);
+  };
+
+  const validatePhoneNumber = (phoneStr: string): boolean => {
+    const phoneRegex = /^\d{10}$/;
+    return phoneRegex.test(phoneStr.replace(/\D/g, ''));
+  };
+
+  const validateSignupStep1 = (): { valid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    if (!firstName.trim()) {
+      errors.push('First name is required');
+    }
+
+    if (!lastName.trim()) {
+      errors.push('Last name is required');
+    }
+
+    if (!email.trim()) {
+      errors.push('Email is required');
+    } else if (!validateEmail(email)) {
+      errors.push('Email must be lowercase and valid (e.g., user@example.com)');
+    }
+
+    if (phone && !validatePhoneNumber(phone)) {
+      errors.push('Phone number must be exactly 10 digits');
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  };
+
   const clearResetQuery = () => {
     const url = new URL(window.location.href);
     url.searchParams.delete('resetToken');
@@ -64,17 +107,26 @@ const LoginPortal: React.FC = () => {
     
     if (mode === 'login') {
       // Simple login with email and password
+      if (!email.trim()) {
+        setFormError('Please enter your email');
+        return;
+      }
+      if (!validateEmail(email)) {
+        setFormError('Please enter a valid email address');
+        return;
+      }
+      if (!password) {
+        setFormError('Please enter your password');
+        return;
+      }
       await login({ email, password });
     } else {
       // Two-step signup process
       if (signupStep === 1) {
-        // Step 1: Validate name and email, then move to password step
-        if (!firstName.trim() || !lastName.trim()) {
-          setFormError('Please enter your full name');
-          return;
-        }
-        if (!email.trim()) {
-          setFormError('Please enter your email address');
+        // Step 1: Validate name, email, and phone then move to password step
+        const validation = validateSignupStep1();
+        if (!validation.valid) {
+          setFormError(validation.errors[0]);
           return;
         }
         // Proceed to step 2 (password entry)
@@ -412,26 +464,59 @@ const LoginPortal: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
-                    placeholder="customer@example.com"
-                    disabled={isLoading}
-                  />
+                  <div className="relative">
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className={`w-full px-4 py-3.5 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:bg-white transition-all ${
+                        email && validateEmail(email) ? 'border-green-400 focus:ring-green-500' : 'border-slate-200 focus:ring-indigo-500'
+                      } ${email && !validateEmail(email) ? 'border-red-400' : ''}`}
+                      placeholder="customer@example.com"
+                      disabled={isLoading}
+                    />
+                    {email && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        {validateEmail(email) ? (
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                        ) : (
+                          <X className="w-5 h-5 text-red-500" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {email && !validateEmail(email) && (
+                      <p className="text-xs text-red-600 mt-1">⚠️ Email must be lowercase with valid format</p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number (Optional)</label>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
-                    placeholder="+91 9876543210"
-                    disabled={isLoading}
-                  />
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className={`w-full px-4 py-3.5 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:bg-white transition-all ${
+                        phone && validatePhoneNumber(phone) ? 'border-green-400 focus:ring-green-500' : 'border-slate-200 focus:ring-indigo-500'
+                      } ${phone && !validatePhoneNumber(phone) ? 'border-red-400' : ''}`}
+                      placeholder="9876543210"
+                      maxLength={10}
+                      disabled={isLoading}
+                    />
+                    {phone && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        {validatePhoneNumber(phone) ? (
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                        ) : (
+                          <X className="w-5 h-5 text-red-500" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {phone && !validatePhoneNumber(phone) && (
+                      <p className="text-xs text-red-600 mt-1">⚠️ Invalid phone number format</p>
+                  )}
                 </div>
               </>
             ) : mode === 'register' && signupStep === 2 ? (
@@ -496,15 +581,31 @@ const LoginPortal: React.FC = () => {
               <>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
-                    placeholder="customer@example.com"
-                    disabled={isLoading}
-                  />
+                  <div className="relative">
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className={`w-full px-4 py-3.5 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:bg-white transition-all ${
+                        email && validateEmail(email) ? 'border-green-400 focus:ring-green-500' : 'border-slate-200 focus:ring-indigo-500'
+                      } ${email && !validateEmail(email) ? 'border-red-400' : ''}`}
+                      placeholder="customer@example.com"
+                      disabled={isLoading}
+                    />
+                    {email && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        {validateEmail(email) ? (
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                        ) : (
+                          <X className="w-5 h-5 text-red-500" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {email && !validateEmail(email) && (
+                    <p className="text-xs text-red-600 mt-1">⚠️ Email must be lowercase with valid format (e.g., user@example.com)</p>
+                  )}
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-2">

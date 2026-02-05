@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ShoppingCart, Search, Menu, Heart, Star, ArrowRight, 
   ChevronRight, LayoutGrid, List, User, ShoppingBag, Plus, X, ArrowDown, MessageSquare, Bell,
-  Home, Sparkles, Filter, SlidersHorizontal, Loader2, Store
+  Home, Sparkles, Filter, SlidersHorizontal, Loader2, Store, Settings, Gift
 } from 'lucide-react';
 import { Product, CartItem } from './types';
 import CartDrawer from './components/CartDrawer';
@@ -71,6 +71,9 @@ const App: React.FC = () => {
   const [isBecomeSellerOpen, setIsBecomeSellerOpen] = useState(false);
   const [lastOrder, setLastOrder] = useState<{id: string, items: CartItem[], total: number} | null>(null);
   const [showIntro, setShowIntro] = useState(true);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(3);
+  const [profileTab, setProfileTab] = useState<'overview' | 'orders' | 'wishlist' | 'referral' | 'settings'>('overview');
 
   // Load initial data
   useEffect(() => {
@@ -96,6 +99,20 @@ const App: React.FC = () => {
 
     return () => window.clearTimeout(timer);
   }, []);
+
+  // Close notification dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (isNotificationOpen && !(e.target as Element).closest('.notification-panel')) {
+        setIsNotificationOpen(false);
+      }
+    };
+    
+    if (isNotificationOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isNotificationOpen]);
 
   const loadInitialData = async () => {
     try {
@@ -458,6 +475,28 @@ const App: React.FC = () => {
             </div>
             
             <button 
+              onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+              className={`relative p-3 rounded-2xl border transition-all ${isScrolled ? 'border-slate-200 text-slate-400' : 'border-white/20 text-white'} hover:bg-white hover:text-slate-900`}
+            >
+              <Bell className="w-5 h-5" />
+              {notificationCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white animate-pulse">
+                  {notificationCount}
+                </span>
+              )}
+            </button>
+
+            <button 
+              onClick={() => {
+                setProfileTab('settings');
+                setIsProfileOpen(true);
+              }}
+              className={`p-3 rounded-2xl border transition-all ${isScrolled ? 'border-slate-200 text-slate-400' : 'border-white/20 text-white'} hover:bg-white hover:text-slate-900`}
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+            
+            <button 
               onClick={() => setIsCartOpen(true)}
               className={`relative p-3 rounded-2xl transition-all ${isScrolled ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-900 shadow-xl'}`}
             >
@@ -467,10 +506,6 @@ const App: React.FC = () => {
                   {cartCount}
                 </span>
               )}
-            </button>
-
-            <button onClick={() => setIsFeedbackOpen(true)} className={`p-3 rounded-2xl border transition-all sm:flex hidden ${isScrolled ? 'border-slate-200 text-slate-400' : 'border-white/20 text-white'} hover:bg-white hover:text-slate-900`}>
-              <MessageSquare className="w-5 h-5" />
             </button>
 
             {isAuthenticated ? (
@@ -485,6 +520,82 @@ const App: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {/* Notification Dropdown */}
+      {isNotificationOpen && (
+        <div className="notification-panel fixed top-20 right-6 z-50 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 animate-in slide-in-from-top-5 duration-200">
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+            <h3 className="font-black text-slate-900 text-lg">Notifications</h3>
+            <button 
+              onClick={() => {
+                setNotificationCount(0);
+                setIsNotificationOpen(false);
+              }}
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
+            >
+              Mark all read
+            </button>
+          </div>
+          <div className="max-h-[400px] overflow-y-auto">
+            <div className="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 transition-colors">
+              <div className="flex items-start gap-3">
+                <div className="bg-amber-100 p-2 rounded-lg">
+                  <Sparkles className="w-5 h-5 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-slate-900 text-sm mb-1">Flash Sale Alert! 🔥</h4>
+                  <p className="text-xs text-slate-600 mb-2">Up to 70% off on Electronics. Limited time offer!</p>
+                  <span className="text-[10px] text-slate-400 font-bold">2 hours ago</span>
+                </div>
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+              </div>
+            </div>
+            <div className="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 transition-colors">
+              <div className="flex items-start gap-3">
+                <div className="bg-green-100 p-2 rounded-lg">
+                  <Gift className="w-5 h-5 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-slate-900 text-sm mb-1">Exclusive Member Offer</h4>
+                  <p className="text-xs text-slate-600 mb-2">Get extra 15% off on your next purchase as a Gold member!</p>
+                  <span className="text-[10px] text-slate-400 font-bold">5 hours ago</span>
+                </div>
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+              </div>
+            </div>
+            <div className="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 transition-colors">
+              <div className="flex items-start gap-3">
+                <div className="bg-indigo-100 p-2 rounded-lg">
+                  <Star className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-slate-900 text-sm mb-1">New Arrivals Just Dropped!</h4>
+                  <p className="text-xs text-slate-600 mb-2">Check out the latest products in Fashion & Lifestyle.</p>
+                  <span className="text-[10px] text-slate-400 font-bold">1 day ago</span>
+                </div>
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+              </div>
+            </div>
+            <div className="p-4 hover:bg-slate-50 cursor-pointer transition-colors">
+              <div className="flex items-start gap-3">
+                <div className="bg-purple-100 p-2 rounded-lg">
+                  <ShoppingBag className="w-5 h-5 text-purple-600" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-slate-900 text-sm mb-1">Weekend Special Sale</h4>
+                  <p className="text-xs text-slate-600 mb-2">Enjoy special discounts this weekend on selected items.</p>
+                  <span className="text-[10px] text-slate-400 font-bold">2 days ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="p-3 border-t border-slate-100">
+            <button className="w-full py-2 text-center text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors">
+              View All Notifications
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 pb-24">
         {/* Show ProductsPage when in products view */}
@@ -724,10 +835,6 @@ const App: React.FC = () => {
           <LayoutGrid className="w-6 h-6" />
           <span className="text-[8px] font-black uppercase tracking-tighter">Products</span>
         </button>
-        <button onClick={() => setIsFeedbackOpen(true)} className="flex flex-col items-center gap-1 text-slate-400">
-          <MessageSquare className="w-6 h-6" />
-          <span className="text-[8px] font-black uppercase tracking-tighter">Feedback</span>
-        </button>
         <div className="relative -top-4">
           <button 
             onClick={() => setIsCartOpen(true)}
@@ -822,7 +929,11 @@ const App: React.FC = () => {
 
       <ProfilePage
         isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
+        onClose={() => {
+          setIsProfileOpen(false);
+          setProfileTab('overview');
+        }}
+        initialTab={profileTab}
       />
 
       <BecomeSellerModal
