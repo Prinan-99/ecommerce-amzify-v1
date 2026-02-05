@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
 
 interface LoginCredentials {
   email: string;
@@ -53,7 +53,7 @@ class SellerApiService {
 
   // Auth endpoints
   async login(credentials: LoginCredentials) {
-    const data = await this.request('/auth/login', {
+    const data = await this.request('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
@@ -67,7 +67,7 @@ class SellerApiService {
   }
 
   async register(userData: SellerRegisterData) {
-    const data = await this.request('/auth/register/seller', {
+    const data = await this.request('/api/auth/register/seller', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
@@ -81,12 +81,12 @@ class SellerApiService {
   }
 
   async getCurrentUser() {
-    return this.request('/auth/me');
+    return this.request('/api/auth/me');
   }
 
   async logout() {
     try {
-      await this.request('/auth/logout', { method: 'POST' });
+      await this.request('/api/auth/logout', { method: 'POST' });
     } finally {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
@@ -99,7 +99,7 @@ class SellerApiService {
       throw new Error('No refresh token available');
     }
 
-    const data = await this.request('/auth/refresh', {
+    const data = await this.request('/api/auth/refresh', {
       method: 'POST',
       body: JSON.stringify({ refreshToken }),
     });
@@ -112,11 +112,11 @@ class SellerApiService {
 
   // Analytics endpoints
   async getSellerStats() {
-    return this.request('/analytics/seller/stats');
+    return this.request('/api/analytics/seller/stats');
   }
 
   async getSellerAnalytics(timeRange: string = '30d') {
-    return this.request(`/analytics/seller?range=${timeRange}`);
+    return this.request(`/api/analytics/seller?range=${timeRange}`);
   }
 
   // New comprehensive dashboard endpoints
@@ -205,64 +205,161 @@ class SellerApiService {
 
   // Enhanced Orders endpoints
   async updateOrderStatus(orderId: string, status: string) {
-    return this.request(`/orders/${orderId}/status`, {
+    return this.request(`/api/orders/${orderId}/status`, {
       method: 'PUT',
       body: JSON.stringify({ status }),
     });
   }
 
   async getOrderDetails(orderId: string) {
-    return this.request(`/orders/${orderId}`);
+    return this.request(`/api/orders/${orderId}`);
   }
 
   // Marketing endpoints
   async getMarketingCampaigns() {
-    return this.request('/marketing/campaigns');
+    return this.request('/api/marketing/campaigns');
   }
 
   async createMarketingCampaign(campaignData: any) {
-    return this.request('/marketing/campaigns', {
+    return this.request('/api/marketing/campaigns', {
       method: 'POST',
       body: JSON.stringify(campaignData),
     });
   }
 
   async updateMarketingCampaign(campaignId: string, campaignData: any) {
-    return this.request(`/marketing/campaigns/${campaignId}`, {
+    return this.request(`/api/marketing/campaigns/${campaignId}`, {
       method: 'PUT',
       body: JSON.stringify(campaignData),
     });
   }
 
   async deleteMarketingCampaign(campaignId: string) {
-    return this.request(`/marketing/campaigns/${campaignId}`, {
+    return this.request(`/api/marketing/campaigns/${campaignId}`, {
       method: 'DELETE',
     });
   }
 
   // Customer endpoints
   async getMyCustomers() {
-    return this.request('/customers/seller');
+    return this.request('/api/customers/seller');
   }
 
   async getCustomerInsights() {
-    return this.request('/customers/insights');
+    return this.request('/api/customers/insights');
   }
+
+    // Customer Analytics endpoints
+    async getCustomerAnalyticsOverview(startDate?: string, endDate?: string) {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      return this.request(`/api/seller/analytics/overview?${params.toString()}`);
+    }
+
+    async getCustomersList(filters?: { search?: string; segment?: string; startDate?: string; endDate?: string; page?: number; limit?: number }) {
+      const params = new URLSearchParams();
+      if (filters?.search) params.append('search', filters.search);
+      if (filters?.segment) params.append('segment', filters.segment);
+      if (filters?.startDate) params.append('startDate', filters.startDate);
+      if (filters?.endDate) params.append('endDate', filters.endDate);
+      if (filters?.page) params.append('page', filters.page.toString());
+      if (filters?.limit) params.append('limit', filters.limit.toString());
+      return this.request(`/api/seller/customers?${params.toString()}`);
+    }
+
+    async getCustomerProfile(customerId: string) {
+      return this.request(`/api/seller/customers/${customerId}`);
+    }
+
+    async getCustomerActivity(customerId: string) {
+      return this.request(`/api/seller/customers/${customerId}/activity`);
+    }
+
+    async getCustomerSegmentation() {
+      return this.request('/api/seller/segmentation');
+    }
+
+    async exportCustomers(startDate?: string, endDate?: string) {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      const response = await fetch(`${API_BASE_URL}/seller/export/customers?${params.toString()}`, {
+        headers: this.getAuthHeaders()
+      });
+      
+      if (!response.ok) throw new Error('Export failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `customers_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }
+
+    async exportPurchaseReport(startDate?: string, endDate?: string) {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      const response = await fetch(`${API_BASE_URL}/seller/export/purchase-report?${params.toString()}`, {
+        headers: this.getAuthHeaders()
+      });
+      
+      if (!response.ok) throw new Error('Export failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `purchase_report_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }
+
+    async exportRepeatCustomers() {
+      const response = await fetch(`${API_BASE_URL}/seller/export/repeat-customers`, {
+        headers: this.getAuthHeaders()
+      });
+      
+      if (!response.ok) throw new Error('Export failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `repeat_customers_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }
+
+    async getCustomerAIInsights(customerId: string) {
+      return this.request(`/api/seller/customers/${customerId}/ai-insights`);
+    }
 
   // Logistics endpoints
   async getMyShipments() {
-    return this.request('/logistics/shipments');
+    return this.request('/api/logistics/shipments');
   }
 
   async createShipment(shipmentData: any) {
-    return this.request('/logistics/shipments', {
+    return this.request('/api/logistics/shipments', {
       method: 'POST',
       body: JSON.stringify(shipmentData),
     });
   }
 
   async updateShipmentStatus(shipmentId: string, status: string) {
-    return this.request(`/logistics/shipments/${shipmentId}/status`, {
+    return this.request(`/api/logistics/shipments/${shipmentId}/status`, {
       method: 'PUT',
       body: JSON.stringify({ status }),
     });
@@ -270,18 +367,18 @@ class SellerApiService {
 
   // Support endpoints
   async getSupportTickets() {
-    return this.request('/support/tickets');
+    return this.request('/api/support/tickets');
   }
 
   async createSupportTicket(ticketData: any) {
-    return this.request('/support/tickets', {
+    return this.request('/api/support/tickets', {
       method: 'POST',
       body: JSON.stringify(ticketData),
     });
   }
 
   async updateSupportTicket(ticketId: string, message: string) {
-    return this.request(`/support/tickets/${ticketId}/messages`, {
+    return this.request(`/api/support/tickets/${ticketId}/messages`, {
       method: 'POST',
       body: JSON.stringify({ message }),
     });
@@ -289,40 +386,40 @@ class SellerApiService {
 
   // Financial endpoints
   async getPayoutHistory() {
-    return this.request('/seller/payouts');
+    return this.request('/api/seller/payouts');
   }
 
   async requestPayout(amount: number) {
-    return this.request('/seller/payouts/request', {
+    return this.request('/api/seller/payouts/request', {
       method: 'POST',
       body: JSON.stringify({ amount }),
     });
   }
 
   async getFinancialSummary() {
-    return this.request('/seller/financial/summary');
+    return this.request('/api/seller/financial/summary');
   }
 
   // Social Media Integration
   async connectSocialMedia(platform: string, credentials: any) {
-    return this.request('/seller/social/connect', {
+    return this.request('/api/seller/social/connect', {
       method: 'POST',
       body: JSON.stringify({ platform, credentials }),
     });
   }
 
   async disconnectSocialMedia(platform: string) {
-    return this.request(`/seller/social/disconnect/${platform}`, {
+    return this.request(`/api/seller/social/disconnect/${platform}`, {
       method: 'DELETE',
     });
   }
 
   async getSocialMediaStats() {
-    return this.request('/seller/social/stats');
+    return this.request('/api/seller/social/stats');
   }
 
   async postToSocialMedia(platforms: string[], content: any) {
-    return this.request('/seller/social/post', {
+    return this.request('/api/seller/social/post', {
       method: 'POST',
       body: JSON.stringify({ platforms, content }),
     });
@@ -330,14 +427,14 @@ class SellerApiService {
 
   // Password reset endpoints
   async requestPasswordReset(email: string) {
-    return this.request('/auth/forgot-password', {
+    return this.request('/api/auth/forgot-password', {
       method: 'POST',
       body: JSON.stringify({ email }),
     });
   }
 
   async resetPassword(token: string, newPassword: string) {
-    return this.request('/auth/reset-password', {
+    return this.request('/api/auth/reset-password', {
       method: 'POST',
       body: JSON.stringify({ token, newPassword }),
     });

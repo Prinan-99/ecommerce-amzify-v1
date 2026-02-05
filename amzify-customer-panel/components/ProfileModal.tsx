@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Package, MapPin, CreditCard, Settings, Eye, Truck, Calendar, CheckCircle, Clock, AlertCircle, LogOut, Trash2, Shield } from 'lucide-react';
+import { X, User, Package, MapPin, CreditCard, Settings, Eye, Truck, Calendar, CheckCircle, Clock, AlertCircle, LogOut, Trash2, Shield, Heart, Star } from 'lucide-react';
 import { useAuth } from '../context/RealAuthContext';
 import { customerApiService } from '../services/customerApi';
+import { MOCK_USER, MOCK_ORDERS, MOCK_WISHLIST, BENEFITS } from '../constants';
+import { UserProfile, Order as ProfileOrder, WishlistItem } from '../types';
+import MembershipCard from './MembershipCard';
+import BenefitsSection from './BenefitsSection';
+import OrderHistory from './OrderHistory';
+import WishlistView from './WishlistView';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -31,7 +37,7 @@ interface Address {
 
 const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'addresses' | 'settings'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'addresses' | 'settings' | 'wishlist'>('profile');
   const [orders, setOrders] = useState<Order[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -39,6 +45,9 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>(MOCK_WISHLIST);
+  const [userProfile] = useState<UserProfile>(MOCK_USER);
+  const [profileOrders] = useState<ProfileOrder[]>(MOCK_ORDERS);
 
   useEffect(() => {
     if (isOpen) {
@@ -149,7 +158,8 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
       // Call logout API
       const token = localStorage.getItem('accessToken');
       if (token) {
-        await fetch('http://localhost:5000/api/auth/logout', {
+        const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+        await fetch(`${API_BASE_URL}/api/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -175,7 +185,8 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
     setIsDeleting(true);
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch('http://localhost:5000/api/auth/delete-account', {
+      const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+      const response = await fetch(`${API_BASE_URL}/api/auth/delete-account`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -201,6 +212,20 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
       setShowDeleteConfirm(false);
       setDeleteReason('');
     }
+  };
+
+  const handleWishlistRemove = (id: string) => {
+    setWishlistItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  const handleAddToCart = (item: WishlistItem) => {
+    // Add to cart logic here
+    console.log('Adding to cart:', item);
+  };
+
+  const handleWishlistItemClick = (item: WishlistItem) => {
+    // Handle item click logic here
+    console.log('Clicked item:', item);
   };
 
   const getStatusColor = (status: string) => {
@@ -263,6 +288,15 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
                 Addresses
               </button>
               <button
+                onClick={() => setActiveTab('wishlist')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
+                  activeTab === 'wishlist' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-white'
+                }`}
+              >
+                <Heart className="w-5 h-5" />
+                Wishlist
+              </button>
+              <button
                 onClick={() => setActiveTab('settings')}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
                   activeTab === 'settings' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-white'
@@ -277,20 +311,27 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
           {/* Content */}
           <div className="flex-1 p-6 overflow-y-auto">
             {activeTab === 'profile' && (
-              <div className="space-y-6">
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-                      <User className="w-8 h-8" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold">{user?.first_name} {user?.last_name}</h3>
-                      <p className="text-white/80">{user?.email}</p>
-                      <p className="text-white/80">{user?.phone || 'No phone number'}</p>
-                    </div>
-                  </div>
-                </div>
+              <div className="space-y-8">
+                {/* Premium Membership Card */}
+                <MembershipCard 
+                  user={userProfile} 
+                  onViewHistory={() => setActiveTab('orders')} 
+                />
+                
+                {/* Benefits Section */}
+                <BenefitsSection 
+                  userTier={userProfile.tier} 
+                  benefits={BENEFITS} 
+                />
 
+                {/* Recent Orders Preview */}
+                <OrderHistory 
+                  orders={profileOrders.slice(0, 3)} 
+                  onSeeAll={() => setActiveTab('orders')}
+                  onOrderClick={(id) => console.log('Order clicked:', id)}
+                />
+
+                {/* Account Details */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-slate-50 rounded-2xl p-6">
                     <h4 className="font-bold text-slate-900 mb-4">Account Details</h4>
@@ -315,24 +356,34 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span className="text-slate-600">Total Orders</span>
-                        <span className="font-bold text-slate-900">{orders.length}</span>
+                        <span className="font-bold text-slate-900">{profileOrders.length}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-600">Delivered</span>
                         <span className="font-bold text-green-600">
-                          {orders.filter(o => o.status === 'delivered').length}
+                          {profileOrders.filter(o => o.status === 'Delivered').length}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-600">Total Spent</span>
                         <span className="font-bold text-slate-900">
-                          {formatINR(orders.reduce((sum, order) => sum + order.total_amount, 0))}
+                          ₹{profileOrders.reduce((sum, order) => sum + order.amount, 0).toLocaleString()}
                         </span>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
+            )}
+
+            {activeTab === 'wishlist' && (
+              <WishlistView
+                items={wishlistItems}
+                onRemove={handleWishlistRemove}
+                onAddToCart={handleAddToCart}
+                onItemClick={handleWishlistItemClick}
+                onBack={() => setActiveTab('profile')}
+              />
             )}
 
             {activeTab === 'orders' && (

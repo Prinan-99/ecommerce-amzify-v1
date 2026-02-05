@@ -30,6 +30,105 @@
       background: #e2e8f0;
       border-radius: 10px;
     }
+    
+    /* Premium Profile Styles */
+    .gold-gradient {
+      background: linear-gradient(135deg, #C5A059 0%, #E6C875 50%, #C5A059 100%);
+    }
+    
+    .shimmer {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .shimmer::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(197, 160, 89, 0.1), transparent);
+      transition: left 0.5s;
+    }
+    
+    .shimmer:hover::before {
+      left: 100%;
+    }
+    
+    @keyframes marquee {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-100%); }
+    }
+    
+    .animate-marquee { 
+      will-change: transform; 
+    }
+    
+    .group:hover .animate-marquee { 
+      animation-play-state: paused; 
+    }
+    
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    
+    /* Animation utilities */
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes slide-in-from-bottom-10 {
+      from { 
+        opacity: 0;
+        transform: translateY(2.5rem);
+      }
+      to { 
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes zoom-in-95 {
+      from { 
+        opacity: 0;
+        transform: scale(0.95);
+      }
+      to { 
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    
+    .animate-in {
+      animation-fill-mode: both;
+    }
+    
+    .fade-in {
+      animation: fade-in 0.5s ease-out;
+    }
+    
+    .slide-in-from-bottom-10 {
+      animation: slide-in-from-bottom-10 0.7s ease-out;
+    }
+    
+    .zoom-in-95 {
+      animation: zoom-in-95 0.5s ease-out;
+    }
+    
+    .duration-700 {
+      animation-duration: 0.7s;
+    }
+    
+    .duration-500 {
+      animation-duration: 0.5s;
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">

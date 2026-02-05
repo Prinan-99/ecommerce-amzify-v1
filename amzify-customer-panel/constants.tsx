@@ -1,5 +1,139 @@
 
-import { Product } from './types';
+import React from 'react';
+import { Product, MembershipTier, UserProfile, Benefit, Order, OrderStatus, WishlistItem } from './types';
+import { 
+  ShoppingBag, 
+  Heart, 
+  MapPin, 
+  CreditCard, 
+  Settings, 
+  HelpCircle, 
+  Truck, 
+  Gift, 
+  Star,
+  Zap
+} from 'lucide-react';
+
+export const MOCK_USER: UserProfile = {
+  name: "Maya Sharma",
+  initial: "M",
+  tier: MembershipTier.GOLD,
+  memberSince: "Jan 2025",
+  currentSpend: 5400,
+  rewardPoints: 2672,
+  nextTierThreshold: 10000,
+  upgradeDeadline: "22 Jul 2026",
+};
+
+export const MOCK_ORDERS: Order[] = [
+  { id: 'AMZ-9021-KJ', date: 'Jan 15, 2025', amount: 12450, status: OrderStatus.DELIVERED, itemsCount: 3 },
+  { id: 'AMZ-8832-LP', date: 'Jan 02, 2025', amount: 3200, status: OrderStatus.DELIVERED, itemsCount: 1 },
+  { id: 'AMZ-7741-XQ', date: 'Dec 24, 2024', amount: 8900, status: OrderStatus.DELIVERED, itemsCount: 2 },
+];
+
+export const MOCK_WISHLIST: WishlistItem[] = [
+  {
+    id: 'w1',
+    name: 'Wireless Noise Cancelling Headphones',
+    price: 18500,
+    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=200',
+    category: 'Electronics',
+    rating: 4.8
+  },
+  {
+    id: 'w2',
+    name: 'Classic Leather Weekend Bag',
+    price: 7200,
+    image: 'https://images.unsplash.com/photo-1547949003-9792a18a2601?auto=format&fit=crop&q=80&w=200',
+    category: 'Lifestyle',
+    rating: 4.5
+  },
+  {
+    id: 'w3',
+    name: 'Minimalist Ceramic Vase Set',
+    price: 2400,
+    image: 'https://images.unsplash.com/photo-1581783898377-1c85bf937427?auto=format&fit=crop&q=80&w=200',
+    category: 'Home Decor',
+    rating: 4.9
+  }
+];
+
+export const RECENTLY_VIEWED: WishlistItem[] = [
+  {
+    id: 'rv1',
+    name: 'Handcrafted Fountain Pen',
+    price: 4500,
+    image: 'https://images.unsplash.com/photo-1583485088034-697b5bc5b4cb?auto=format&fit=crop&q=80&w=200',
+    category: 'Stationery',
+    rating: 4.9
+  },
+  {
+    id: 'rv2',
+    name: 'Silk Blend Smoking Jacket',
+    price: 12900,
+    image: 'https://images.unsplash.com/photo-1598454547644-425979c9b43e?auto=format&fit=crop&q=80&w=200',
+    category: 'Apparel',
+    rating: 5.0
+  },
+  {
+    id: 'rv3',
+    name: 'Onyx Desk Organizer',
+    price: 3100,
+    image: 'https://images.unsplash.com/photo-1590074075091-428210f97337?auto=format&fit=crop&q=80&w=200',
+    category: 'Home Office',
+    rating: 4.7
+  }
+];
+
+export const OFFERS = [
+  {
+    id: 'off1',
+    title: 'Signature Weekend',
+    discount: '15% OFF',
+    desc: 'Bespoke Lifestyle Items',
+    tag: 'LIMITED'
+  },
+  {
+    id: 'off2',
+    title: 'Tier Loyalty Perk',
+    discount: 'FREE GIFT',
+    desc: 'On orders over ₹15,000',
+    tag: 'EXCLUSIVE'
+  }
+];
+
+export const BENEFITS: Benefit[] = [
+  {
+    id: '1',
+    title: '1.5x Rewards',
+    description: 'Earn more points on every purchase',
+    icon: 'Zap'
+  },
+  {
+    id: '2',
+    title: 'Free Shipping',
+    description: 'Complimentary shipping on all orders',
+    icon: 'Truck'
+  },
+  {
+    id: '3',
+    title: 'Priority Access',
+    description: 'Shop new launches before everyone else',
+    icon: 'Star'
+  },
+  {
+    id: '4',
+    title: 'Birthday Gift',
+    description: 'A special surprise on your big day',
+    icon: 'Gift'
+  }
+];
+
+export const TIER_THRESHOLDS = {
+  [MembershipTier.MEMBER]: 2000,
+  [MembershipTier.GOLD]: 5000,
+  [MembershipTier.PLATINUM]: 10000,
+};
 
 export const PRODUCTS: Product[] = [
   {

@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { body, validationResult } from 'express-validator';
 import prisma from '../config/prisma.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
+import emailService from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -134,10 +135,11 @@ router.post('/:id/approve',
       // Create seller profile
       await tx.seller_profiles.create({
         data: {
-          user_id: user.id,
+          users: {
+            connect: { id: user.id }
+          },
           company_name: application.company_name,
           business_type: application.business_type,
-          category_id: category_id || null,
           description: application.business_description,
           business_address: application.business_address,
           city: application.city,
@@ -167,8 +169,21 @@ router.post('/:id/approve',
       return { user, application: updatedApplication };
     });
 
+    // Send approval email notification
+    try {
+      await emailService.sendSellerApprovalEmail(
+        application.email,
+        application.first_name,
+        application.company_name
+      );
+      console.log(`✅ Approval email sent to ${application.email}`);
+    } catch (emailError) {
+      console.error('⚠️ Failed to send approval email:', emailError.message);
+      // Don't block the approval process if email fails
+    }
+
     res.json({
-      message: 'Seller application approved successfully',
+      message: 'Seller application approved successfully. Notification email sent.',
       application: result.application
     });
   } catch (error) {
@@ -215,8 +230,22 @@ router.post('/:id/reject',
         }
       });
 
+      // Send rejection email notification
+      try {
+        await emailService.sendSellerRejectionEmail(
+          application.email,
+          application.first_name,
+          application.company_name,
+          reason
+        );
+        console.log(`✅ Rejection email sent to ${application.email}`);
+      } catch (emailError) {
+        console.error('⚠️ Failed to send rejection email:', emailError.message);
+        // Don't block the rejection process if email fails
+      }
+
       res.json({
-        message: 'Seller application rejected',
+        message: 'Seller application rejected. Notification email sent.',
         application: updatedApplication
       });
     } catch (error) {

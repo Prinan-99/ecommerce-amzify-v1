@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
 
 interface LoginCredentials {
   email: string;
@@ -36,7 +36,7 @@ class AdminApiService {
 
   // Auth endpoints
   async login(credentials: LoginCredentials) {
-    const data = await this.request('/auth/login', {
+    const data = await this.request('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
@@ -50,12 +50,12 @@ class AdminApiService {
   }
 
   async getCurrentUser() {
-    return this.request('/auth/me');
+    return this.request('/api/auth/me');
   }
 
   async logout() {
     try {
-      await this.request('/auth/logout', { method: 'POST' });
+      await this.request('/api/auth/logout', { method: 'POST' });
     } finally {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
@@ -68,7 +68,7 @@ class AdminApiService {
       throw new Error('No refresh token available');
     }
 
-    const data = await this.request('/auth/refresh', {
+    const data = await this.request('/api/auth/refresh', {
       method: 'POST',
       body: JSON.stringify({ refreshToken }),
     });
@@ -191,6 +191,50 @@ class AdminApiService {
 
   async getSellerProducts(sellerId: string, page: number = 1, limit: number = 20) {
     return this.request(`/products/sellers/${sellerId}/products?page=${page}&limit=${limit}`);
+  }
+
+  // Logistics endpoints
+  async getShipments(params?: { status?: string; trackingNumber?: string; orderId?: string; courierPartner?: string; page?: number; limit?: number }) {
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    return this.request(`/admin/shipments${queryString}`);
+  }
+
+  async getShipmentById(shipmentId: string) {
+    return this.request(`/admin/shipments/${shipmentId}`);
+  }
+
+  async updateShipmentStatus(shipmentId: string, status: string, remarks?: string) {
+    return this.request(`/admin/shipments/${shipmentId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, remarks }),
+    });
+  }
+
+  async updateCourierPartner(shipmentId: string, courierPartnerId: string, trackingNumber: string) {
+    return this.request(`/admin/shipments/${shipmentId}/courier`, {
+      method: 'PATCH',
+      body: JSON.stringify({ courierPartnerId, trackingNumber }),
+    });
+  }
+
+  async updateTrackingNumber(shipmentId: string, trackingNumber: string) {
+    return this.request(`/admin/shipments/${shipmentId}/tracking`, {
+      method: 'PATCH',
+      body: JSON.stringify({ trackingNumber }),
+    });
+  }
+
+  async getDeliveryPartners(params?: { page?: number; limit?: number }) {
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    return this.request(`/admin/delivery-partners${queryString}`);
+  }
+
+  async getShipmentTimeline(shipmentId: string) {
+    return this.request(`/admin/shipments/${shipmentId}/timeline`);
+  }
+
+  async getShipmentsStats() {
+    return this.request('/admin/shipments/stats');
   }
 }
 

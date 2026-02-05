@@ -22,6 +22,93 @@ import { ModernSellerDashboard } from './components/ModernSellerDashboard';
 import { LogisticsTab } from './components/LogisticsTab';
 import { sellerApiService } from './services/sellerApi';
 import { analytics } from './services/analytics';
+import Customers from './pages/Customers';
+import AmzifyLoader from './components/AmzifyLoader';
+
+// Responsive navbar styles
+const navbarStyles = `
+  .navbar-container {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .navbar-tabs {
+    display: flex;
+    gap: 0.25rem;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+
+  .navbar-tab {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.5rem 0.5rem;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+  }
+
+  @media (min-width: 1024px) {
+    .navbar-tab {
+      padding: 0.5rem 0.75rem;
+      font-size: 10px;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .navbar-tab {
+      padding: 0.5rem 1rem;
+      font-size: 10px;
+    }
+  }
+
+  .navbar-tab-text {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .navbar-dropdown {
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    .navbar-tabs {
+      display: none;
+    }
+
+    .navbar-dropdown {
+      display: block;
+    }
+  }
+`;
+
+const animationStyles = `
+  @keyframes fadeInSlide {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fadeInSlide {
+    animation: fadeInSlide 0.4s ease-out forwards;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+`;
 
 const App: React.FC = () => {
   // Authentication integration
@@ -60,6 +147,7 @@ const App: React.FC = () => {
   const [appSuccessMessage, setAppSuccessMessage] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; categoryId: string | null }>({ show: false, categoryId: null });
   const [navigateToCategoriesTab, setNavigateToCategoriesTab] = useState(false);
+  const [isNavDropdownOpen, setIsNavDropdownOpen] = useState(false);
 
   const refreshOrders = async () => {
     try {
@@ -194,6 +282,14 @@ const App: React.FC = () => {
     return () => clearInterval(intervalId);
   }, [activeTab, isAuthenticated, hasSellerAccess]);
 
+  // Inject navbar and animation styles
+  useEffect(() => {
+    const styleTag = document.createElement('style');
+    styleTag.textContent = navbarStyles + animationStyles;
+    document.head.appendChild(styleTag);
+    return () => styleTag.remove();
+  }, []);
+
   const loadNotifications = async () => {
     // Mock notifications for demo
     setNotifications([
@@ -250,14 +346,7 @@ const App: React.FC = () => {
 
   // Show loading state while checking authentication
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
-          <p className="text-slate-600 font-bold">Loading seller panel...</p>
-        </div>
-      </div>
-    );
+    return <AmzifyLoader message="Loading Seller Panel" submessage="Authenticating your Amzify account..." size="large" fullScreen />;
   }
 
   // Access control - redirect or show error if user doesn't have seller access
@@ -353,38 +442,90 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Navigation */}
-      <div className="max-w-[1440px] mx-auto p-6">
-        <div className="bg-white p-2 rounded-[2.5rem] border border-slate-100 shadow-xl overflow-x-auto no-scrollbar flex gap-1 mb-8">
-          {([
-            'dashboard', 'products', 'orders', 'revenue', 'customers', 
-            'marketing', 'social', 'logistics', 'support'
-          ] as const).map(tab => (
-            <button 
-              key={tab} 
-              onClick={() => handleTabChange(tab)} 
-              className={`px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                activeTab === tab ? 'bg-slate-950 text-white shadow-lg' : 'text-slate-400 hover:text-slate-950'
-              }`}
-            >
-              {tab === 'marketing' ? 'Digital Marketing' : 
-               tab === 'social' ? 'Social Media' :
-               tab === 'revenue' ? 'Revenue & Payouts' : tab}
-            </button>
-          ))}
-        </div>
+      {/* Fixed Navigation - Fully Responsive, No Scrolling */}
+      <div className="fixed top-[80px] left-0 right-0 bg-white/95 backdrop-blur-lg border-b border-slate-100 shadow-lg z-40">
+        <div className="navbar-container w-full px-3 py-3 md:px-6">
+          {/* Desktop Navigation */}
+          <div className="navbar-tabs">
+            {([
+              'dashboard', 'products', 'orders', 'revenue', 'customers', 
+              'marketing', 'social', 'logistics', 'support'
+            ] as const).map(tab => (
+              <button 
+                key={tab} 
+                onClick={() => {
+                  handleTabChange(tab);
+                  setIsNavDropdownOpen(false);
+                }}
+                className={`navbar-tab rounded-2xl font-black uppercase tracking-widest transition-all text-center ${
+                  activeTab === tab ? 'bg-slate-950 text-white shadow-lg' : 'text-slate-400 hover:text-slate-950'
+                }`}
+              >
+                <span className="navbar-tab-text">
+                  {tab === 'marketing' ? 'Digital' : 
+                   tab === 'social' ? 'Social' :
+                   tab === 'revenue' ? 'Revenue' : tab}
+                </span>
+              </button>
+            ))}
+          </div>
 
-        {/* Content */}
-        <div className="min-h-[70vh]">
-          {authLoading || isDataLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="text-center">
-                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-indigo-600" />
-                <p className="text-slate-600">Loading your seller dashboard...</p>
-              </div>
+          {/* Mobile Navigation Dropdown */}
+          <div className="navbar-dropdown">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-black text-slate-900">
+                {activeTab === 'marketing' ? 'Digital' : 
+                 activeTab === 'social' ? 'Social' :
+                 activeTab === 'revenue' ? 'Revenue' : activeTab.toUpperCase()}
+              </span>
+              <button
+                onClick={() => setIsNavDropdownOpen(!isNavDropdownOpen)}
+                className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <svg className={`w-5 h-5 transition-transform ${isNavDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+              </button>
             </div>
+            
+            {/* Dropdown Menu */}
+            {isNavDropdownOpen && (
+              <div className="mt-2 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-lg">
+                {([
+                  'dashboard', 'products', 'orders', 'revenue', 'customers', 
+                  'marketing', 'social', 'logistics', 'support'
+                ] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => {
+                      handleTabChange(tab);
+                      setIsNavDropdownOpen(false);
+                    }}
+                    className={`w-full px-4 py-3 text-left text-sm font-black uppercase tracking-widest transition-all border-b last:border-b-0 ${
+                      activeTab === tab 
+                        ? 'bg-slate-950 text-white' 
+                        : 'text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {tab === 'marketing' ? 'Digital Marketing' : 
+                     tab === 'social' ? 'Social Media' :
+                     tab === 'revenue' ? 'Revenue & Payouts' : tab}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content with margin for fixed navbar */}
+      <div className="w-full px-6 pt-32 pb-12">
+        {/* Content Slides */}
+        <div className="min-h-[70vh] relative overflow-hidden">
+          {authLoading || isDataLoading ? (
+            <AmzifyLoader message="Loading Dashboard" submessage="Preparing your Amzify insights..." size="medium" />
           ) : (
-            <>
+            <div key={activeTab} className="animate-fadeInSlide">
               {activeTab === 'dashboard' && <DashboardTab stats={stats} onEditProduct={handleEditProduct} onViewOrder={(orderId) => console.log('View order:', orderId)} onNavigate={handleTabChange} />}
               {activeTab === 'products' && <ProductsTab products={products} onRefresh={loadSellerData} onEdit={handleEditProduct} onAdd={handleAddProduct} navigateToCategories={navigateToCategoriesTab} onCategoriesNavigated={() => setNavigateToCategoriesTab(false)} />}
               {activeTab === 'orders' && (
@@ -396,12 +537,12 @@ const App: React.FC = () => {
                 />
               )}
               {activeTab === 'revenue' && <RevenueDashboard />}
-              {activeTab === 'customers' && <CustomersTab />}
+                {activeTab === 'customers' && <Customers />}
               {activeTab === 'marketing' && <MarketingTab />}
               {activeTab === 'social' && <SocialMediaManager />}
               {activeTab === 'logistics' && <LogisticsTab />}
               {activeTab === 'support' && <SupportTab />}
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -1005,7 +1146,8 @@ const OrdersTab: React.FC<{ orders: any[]; onRefresh: () => void; onStatusUpdate
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     setIsUpdating(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/orders/seller/orders/${orderId}/status`, {
+      const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+      const response = await fetch(`${API_BASE_URL}/api/orders/seller/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1036,9 +1178,10 @@ const OrdersTab: React.FC<{ orders: any[]; onRefresh: () => void; onStatusUpdate
     
     setIsUpdating(true);
     try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
       await Promise.all(
         selectedOrders.map(orderId => 
-          fetch(`http://localhost:5000/api/orders/seller/orders/${orderId}/status`, {
+          fetch(`${API_BASE_URL}/api/orders/seller/orders/${orderId}/status`, {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
@@ -1516,18 +1659,6 @@ const OrdersTab: React.FC<{ orders: any[]; onRefresh: () => void; onStatusUpdate
 };
 
 // Customers Tab Component
-const CustomersTab: React.FC = () => {
-  return (
-    <div className="bg-white rounded-[4rem] border border-slate-100 shadow-sm p-12">
-      <h3 className="text-3xl font-black tracking-tighter mb-8">Customer Analytics</h3>
-      <div className="text-center py-16">
-        <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-        <h4 className="text-xl font-bold text-slate-900 mb-2">Customer insights coming soon</h4>
-        <p className="text-slate-600">Track customer behavior, repeat purchases, and conversion rates</p>
-      </div>
-    </div>
-  );
-};
 
 // Marketing Tab Component
 const MarketingTab: React.FC = () => {

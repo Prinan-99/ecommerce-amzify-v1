@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = process.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
 const SELLER_EMAIL = 'seller@example.com';
 const SELLER_PASSWORD = 'seller123';
 
@@ -218,7 +218,7 @@ async function waitForServer(maxAttempts = 15) {
 
 async function loginAndGetToken() {
   console.log('🔐 Logging in as seller...');
-  const response = await fetch(`${API_URL}/auth/login`, {
+  const response = await fetch(`${API_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

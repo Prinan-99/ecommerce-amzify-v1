@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
 
 interface LoginCredentials {
   email: string;
@@ -9,7 +9,6 @@ interface RegisterData extends LoginCredentials {
   firstName: string;
   lastName: string;
   phone?: string;
-  otp?: string;
 }
 
 interface ForgotPasswordResponse {
@@ -48,7 +47,7 @@ class CustomerApiService {
 
   // Auth endpoints
   async login(credentials: LoginCredentials) {
-    const data = await this.request('/auth/login', {
+    const data = await this.request('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
@@ -62,7 +61,7 @@ class CustomerApiService {
   }
 
   async register(userData: RegisterData) {
-    const data = await this.request('/auth/register/customer', {
+    const data = await this.request('/api/auth/register/customer', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
@@ -76,32 +75,18 @@ class CustomerApiService {
   }
 
   async getCurrentUser() {
-    return this.request('/auth/me');
-  }
-
-  async sendOtp(email: string, type: 'verification' | 'password_reset') {
-    return this.request('/auth/send-otp', {
-      method: 'POST',
-      body: JSON.stringify({ email, type })
-    });
-  }
-
-  async verifyOtp(email: string, otp: string, type: 'verification' | 'password_reset') {
-    return this.request('/auth/verify-otp', {
-      method: 'POST',
-      body: JSON.stringify({ email, otp, type })
-    });
+    return this.request('/api/auth/me');
   }
 
   async requestPasswordReset(email: string): Promise<ForgotPasswordResponse> {
-    return this.request('/auth/forgot-password', {
+    return this.request('/api/auth/forgot-password', {
       method: 'POST',
       body: JSON.stringify({ email })
     });
   }
 
   async resetPassword(token: string, newPassword: string) {
-    return this.request('/auth/reset-password', {
+    return this.request('/api/auth/reset-password', {
       method: 'POST',
       body: JSON.stringify({ token, newPassword })
     });

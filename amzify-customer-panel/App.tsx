@@ -12,10 +12,11 @@ import ProductModal from './components/ProductModal';
 import CheckoutModal from './components/CheckoutModal';
 import PostPurchaseModal from './components/PostPurchaseModal';
 import FeedbackModal from './components/FeedbackModal';
-import ProfileModal from './components/ProfileModal';
+import ProfilePage from './components/ProfilePage';
 import BecomeSellerModal from './components/BecomeSellerModal';
 import ProductsPage from './components/ProductsPage';
 import LoginPortal from './components/LoginPortal';
+import OfferCarousel from './components/OfferCarousel';
 import { useAuth } from './context/RealAuthContext';
 import { customerApiService } from './services/customerApi';
 
@@ -69,6 +70,7 @@ const App: React.FC = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isBecomeSellerOpen, setIsBecomeSellerOpen] = useState(false);
   const [lastOrder, setLastOrder] = useState<{id: string, items: CartItem[], total: number} | null>(null);
+  const [showIntro, setShowIntro] = useState(true);
 
   // Load initial data
   useEffect(() => {
@@ -80,6 +82,21 @@ const App: React.FC = () => {
     }
   }, [isAuthenticated, hasCustomerAccess, authLoading]);
 
+  useEffect(() => {
+    const seenIntro = sessionStorage.getItem('amzifyIntroSeen');
+    if (seenIntro) {
+      setShowIntro(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setShowIntro(false);
+      sessionStorage.setItem('amzifyIntroSeen', '1');
+    }, 1800);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const loadInitialData = async () => {
     try {
       setIsDataLoading(true);
@@ -87,14 +104,16 @@ const App: React.FC = () => {
       
       // Load categories and products in parallel with fallbacks
       try {
-        const categoriesResponse = await fetch('http://localhost:5000/api/categories').then(res => res.json());
+        const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+        const categoriesResponse = await fetch(`${API_BASE_URL}/api/categories`).then(res => res.json());
         setCategories(categoriesResponse.categories || getMockCategories());
       } catch {
         setCategories(getMockCategories());
       }
       
       try {
-        const productsResponse = await fetch('http://localhost:5000/api/products').then(res => res.json());
+        const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+        const productsResponse = await fetch(`${API_BASE_URL}/api/products`).then(res => res.json());
         setProducts(productsResponse.products || getMockProducts());
       } catch {
         setProducts(getMockProducts());
@@ -124,14 +143,16 @@ const App: React.FC = () => {
       
       // Load categories and products for guest browsing with fallbacks
       try {
-        const categoriesResponse = await fetch('http://localhost:5000/api/categories').then(res => res.json());
+        const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+        const categoriesResponse = await fetch(`${API_BASE_URL}/api/categories`).then(res => res.json());
         setCategories(categoriesResponse.categories || getMockCategories());
       } catch {
         setCategories(getMockCategories());
       }
 
       try {
-        const productsResponse = await fetch('http://localhost:5000/api/products').then(res => res.json());
+        const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+        const productsResponse = await fetch(`${API_BASE_URL}/api/products`).then(res => res.json());
         setProducts(productsResponse.products || getMockProducts());
       } catch {
         setProducts(getMockProducts());
@@ -150,9 +171,12 @@ const App: React.FC = () => {
 
   // Filter products based on search and category
   const filteredProducts = products.filter(p => {
-    const matchesCategory = selectedCategory === 'all' || p.category_name?.toLowerCase() === selectedCategory;
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         p.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || 
+      (p.category_name && p.category_name.toLowerCase().includes(selectedCategory.toLowerCase())) ||
+      (p.category && p.category.toLowerCase().includes(selectedCategory.toLowerCase()));
+    const matchesSearch = (p.name && p.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                         (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                         (p.title && p.title.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesCategory && matchesSearch;
   });
 
@@ -164,12 +188,20 @@ const App: React.FC = () => {
 
   const addToCart = async (product: Product) => {
     // ALWAYS add to local cart first for instant feedback (guest or authenticated)
+    const cartProduct = {
+      ...product,
+      // Ensure all required cart item fields exist
+      images: product.images || [product.image || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400'],
+      name: product.name || product.title || 'Product',
+      quantity: 1
+    };
+
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
         return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
       }
-      return [...prev, { ...product, quantity: 1 }];
+      return [...prev, cartProduct];
     });
     
     setIsCartOpen(true);
@@ -180,7 +212,16 @@ const App: React.FC = () => {
         await customerApiService.addToCart(product.id, 1);
         // Reload cart to get updated data from server
         const cartResponse = await customerApiService.getCart();
-        setCart(cartResponse.items || []);
+        if (cartResponse.items && cartResponse.items.length > 0) {
+          // Transform backend cart items to match frontend format
+          const transformedItems = cartResponse.items.map((item: any) => ({
+            ...item,
+            images: item.images || item.product?.images || [item.image || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400'],
+            name: item.name || item.product?.name || item.title || 'Product',
+            price: item.price || item.product?.price || 0
+          }));
+          setCart(transformedItems);
+        }
       } catch (error) {
         console.error('Add to cart sync error:', error);
         // Local cart is already updated, so continue with demo experience
@@ -212,7 +253,17 @@ const App: React.FC = () => {
           }
           // Reload cart from server
           const cartResponse = await customerApiService.getCart();
-          setCart(cartResponse.items || []);
+          if (cartResponse.items && cartResponse.items.length > 0) {
+            const transformedItems = cartResponse.items.map((item: any) => ({
+              ...item,
+              images: item.images || item.product?.images || [item.image || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400'],
+              name: item.name || item.product?.name || item.title || 'Product',
+              price: item.price || item.product?.price || 0
+            }));
+            setCart(transformedItems);
+          } else {
+            setCart([]);
+          }
         }
       } catch (error) {
         console.error('Update cart sync error:', error);
@@ -230,7 +281,17 @@ const App: React.FC = () => {
       try {
         await customerApiService.removeFromCart(id);
         const cartResponse = await customerApiService.getCart();
-        setCart(cartResponse.items || []);
+        if (cartResponse.items && cartResponse.items.length > 0) {
+          const transformedItems = cartResponse.items.map((item: any) => ({
+            ...item,
+            images: item.images || item.product?.images || [item.image || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400'],
+            name: item.name || item.product?.name || item.title || 'Product',
+            price: item.price || item.product?.price || 0
+          }));
+          setCart(transformedItems);
+        } else {
+          setCart([]);
+        }
       } catch (error) {
         console.error('Remove from cart sync error:', error);
         // Local cart already updated, continue with demo
@@ -336,6 +397,30 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      {showIntro && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"></div>
+          <div className="relative z-10 flex flex-col items-center gap-4 px-6 text-center">
+            <div className="bg-white rounded-2xl px-6 py-4 shadow-2xl border border-slate-200">
+              <img
+                src="/amzify-logo.svg"
+                alt="Amzify"
+                className="h-16 w-auto"
+              />
+            </div>
+            <p className="text-white/90 text-sm font-semibold">Amzify — Powering the Future of Shopping.</p>
+            <button
+              onClick={() => {
+                setShowIntro(false);
+                sessionStorage.setItem('amzifyIntroSeen', '1');
+              }}
+              className="mt-2 px-5 py-2 rounded-full bg-white text-slate-900 text-xs font-black uppercase tracking-widest shadow-xl"
+            >
+              Enter Store
+            </button>
+          </div>
+        </div>
+      )}
       {/* Dynamic Header */}
       <header className={`fixed top-0 left-0 right-0 z-40 transition-all duration-500 px-6 ${isScrolled ? 'bg-white/80 backdrop-blur-md h-16 border-b' : 'bg-transparent h-24'}`}>
         <div className="max-w-[1400px] mx-auto h-full flex items-center justify-between">
@@ -429,13 +514,17 @@ const App: React.FC = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
             </div>
 
-            <div className="max-w-[1400px] mx-auto px-6 pb-20 relative z-10 w-full">
-              <div className="max-w-2xl space-y-6">
+            <div className="max-w-[1400px] mx-auto px-6 pb-20 relative z-10 w-full flex items-end justify-between gap-8">
+              <div className="max-w-xl space-y-6">
                 <div className="flex items-center gap-3 animate-in slide-in-from-left duration-700">
                   <span className="h-[1px] w-8 bg-indigo-500"></span>
-                  <span className="text-indigo-400 font-black text-[10px] uppercase tracking-[0.4em]">Spring/Summer 2024</span>
+                  <span className="text-indigo-400 font-black text-[10px] uppercase tracking-[0.4em]">Amzify — Powering the Future of Shopping.</span>
                 </div>
-                <h2 className="text-6xl md:text-8xl font-black text-white leading-none tracking-tighter animate-in slide-in-from-left duration-700 delay-100">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/30 text-white/90 border border-white/20 text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                  Limited Offer · Up to 40% Off
+                </div>
+                <h2 className="text-6xl md:text-7xl font-black text-white leading-none tracking-tighter animate-in slide-in-from-left duration-700 delay-100">
                   Art of<br />Living <span className="text-indigo-500">Lux.</span>
                 </h2>
                 <div className="flex gap-4">
@@ -453,7 +542,62 @@ const App: React.FC = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Offers Carousel on Right - Full Area */}
+              <div className="hidden lg:flex flex-col gap-3 flex-1 h-full">
+                <div className="space-y-1">
+                  <h3 className="text-2xl font-black text-white">Trending Offers</h3>
+                  <p className="text-white/60 text-sm font-semibold">Exclusive for you today</p>
+                </div>
+                <div className="relative group overflow-hidden flex-1 rounded-3xl">
+                  {/* Horizontal Scrolling Container */}
+                  <div 
+                    className="flex gap-4 h-full w-max"
+                    style={{
+                      animation: `slideOffersHorizontal 18s linear infinite`,
+                    }}
+                  >
+                    {[
+                      { title: 'Mega Sale', discount: 'Up to 40% OFF', desc: 'Premium fashion items', color: 'from-purple-500 to-pink-500' },
+                      { title: 'First Buy', discount: '₹500 Gift', desc: 'Your first order', color: 'from-blue-500 to-indigo-500' },
+                      { title: 'Flash Deal', discount: '3x Points', desc: 'Triple rewards', color: 'from-amber-500 to-orange-500' },
+                      { title: 'Top Sellers', discount: 'Free Shipping', desc: 'Orders above ₹999', color: 'from-green-500 to-emerald-500' },
+                      { title: 'Mega Sale', discount: 'Up to 40% OFF', desc: 'Premium fashion items', color: 'from-purple-500 to-pink-500' },
+                      { title: 'First Buy', discount: '₹500 Gift', desc: 'Your first order', color: 'from-blue-500 to-indigo-500' },
+                    ].map((offer, idx) => (
+                      <div
+                        key={idx}
+                        className={`flex-shrink-0 w-80 rounded-3xl bg-gradient-to-br ${offer.color} p-6 cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-105 text-white border border-white/20 backdrop-blur-sm flex flex-col justify-between h-full`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex flex-col gap-1">
+                              <h4 className="text-sm font-black uppercase tracking-wider text-white/90">{offer.title}</h4>
+                              <div className="text-3xl font-black leading-tight">{offer.discount}</div>
+                            </div>
+                            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0">
+                              <Sparkles className="w-5 h-5" />
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-sm font-semibold text-white/90">{offer.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Gradient Fade Overlays */}
+                  <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-slate-950 to-transparent pointer-events-none z-10"></div>
+                  <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-slate-950 to-transparent pointer-events-none z-10"></div>
+                </div>
+              </div>
             </div>
+
+            <style>{`
+              @keyframes slideOffersHorizontal {
+                0% { transform: translateX(0); }
+                100% { transform: translateX(calc(-320px * 4 - 1rem * 4)); }
+              }
+            `}</style>
           </section>
         )}
 
@@ -495,8 +639,8 @@ const App: React.FC = () => {
               >
                 <div className="relative overflow-hidden bg-slate-100 rounded-[2.5rem] aspect-[3/4] mb-6">
                   <img 
-                    src={product.images && product.images.length > 0 ? product.images[0] : 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400'} 
-                    alt={product.name} 
+                    src={product.images && product.images.length > 0 ? product.images[0] : (product.image || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400')} 
+                    alt={product.name || product.title || 'Product'} 
                     className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                   />
                   <div className="absolute bottom-4 right-4">
@@ -516,14 +660,14 @@ const App: React.FC = () => {
                 
                 <div className="px-2 space-y-1">
                   <div className="flex items-center justify-between">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{product.category_name || 'General'}</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{product.category_name || product.category || 'General'}</p>
                     <div className="flex items-center gap-1">
                       <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                      <span className="text-[10px] font-black text-slate-900">4.5</span>
+                      <span className="text-[10px] font-black text-slate-900">{product.rating || '4.5'}</span>
                     </div>
                   </div>
                   <h3 className="text-base font-bold text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors">
-                    {product.name}
+                    {product.name || product.title || 'Product'}
                   </h3>
                   <div className="flex items-center gap-2">
                     <p className="text-base font-black text-slate-950">
@@ -655,7 +799,8 @@ const App: React.FC = () => {
         onClose={() => setIsFeedbackOpen(false)}
         onSubmit={async (data) => {
           try {
-            const response = await fetch('http://localhost:5000/api/auth/feedback', {
+            const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://ecommerce-amzify-v1.onrender.com';
+            const response = await fetch(`${API_BASE_URL}/api/auth/feedback`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -680,7 +825,7 @@ const App: React.FC = () => {
         }}
       />
 
-      <ProfileModal
+      <ProfilePage
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
       />
