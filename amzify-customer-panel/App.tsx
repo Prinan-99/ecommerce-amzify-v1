@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { Product, CartItem } from './types';
 import CartDrawer from './components/CartDrawer';
-import AISearch from './components/AISearch';
 import ProductModal from './components/ProductModal';
 import CheckoutModal from './components/CheckoutModal';
 import PostPurchaseModal from './components/PostPurchaseModal';
@@ -17,6 +16,7 @@ import BecomeSellerModal from './components/BecomeSellerModal';
 import ProductsPage from './components/ProductsPage';
 import LoginPortal from './components/LoginPortal';
 import OfferCarousel from './components/OfferCarousel';
+import Chatbot from './components/Chatbot';
 import { useAuth } from './context/RealAuthContext';
 import { customerApiService } from './services/customerApi';
 
@@ -835,7 +835,8 @@ const App: React.FC = () => {
         onClose={() => setIsBecomeSellerOpen(false)}
       />
 
-      <AISearch />
+      {/* AI Chatbot - Groq powered (FREE) - Always visible for testing */}
+      <Chatbot userType="customer" />
     </div>
   );
 };

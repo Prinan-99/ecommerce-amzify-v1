@@ -9,6 +9,7 @@ import { useAuth } from './context/RealAuthContext';
 import LoginPortal from './components/LoginPortal';
 import { adminApiService } from './services/adminApi';
 import SellerApplications from './pages/SellerApplications';
+import Chatbot from './components/Chatbot';
 
 const App: React.FC = () => {
   // Authentication integration
@@ -2036,6 +2037,9 @@ const FeedbackTab: React.FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
           </div>
         </div>
       )}
+      
+      {/* AI Chatbot for Admins */}
+      <Chatbot userType="admin" />
     </div>
   );
 };

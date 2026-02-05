@@ -24,6 +24,7 @@ import { sellerApiService } from './services/sellerApi';
 import { analytics } from './services/analytics';
 import Customers from './pages/Customers';
 import AmzifyLoader from './components/AmzifyLoader';
+import Chatbot from './components/Chatbot';
 
 // Responsive navbar styles
 const navbarStyles = `
@@ -1904,6 +1905,9 @@ const SupportTab: React.FC = () => {
           ))}
         </div>
       )}
+      
+      {/* AI Chatbot for Sellers */}
+      <Chatbot userType="seller" />
     </div>
   );
 };
