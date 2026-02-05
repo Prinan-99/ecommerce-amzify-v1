@@ -450,16 +450,31 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className={`hidden md:flex items-center gap-3 px-4 py-2 rounded-full border transition-all ${isScrolled ? 'bg-slate-50 border-slate-100' : 'bg-white/10 border-white/20'}`}>
-              <Search className={`w-4 h-4 ${isScrolled ? 'text-slate-400' : 'text-white/60'}`} />
+            <div className={`navbar-search hidden md:flex items-center gap-3 px-4 py-2 rounded-full border transition-all ${isScrolled ? 'bg-slate-50 border-slate-100' : 'bg-white/10 border-white/20'}`}>
+              <Search className="w-4 h-4 text-slate-600" />
               <input 
                 type="text" 
                 placeholder="Search..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className={`bg-transparent outline-none text-xs font-bold w-32 ${isScrolled ? 'text-slate-900' : 'text-white'}`}
+                className="bg-transparent outline-none text-xs font-bold w-32 !text-black placeholder:!text-[#555]"
+                style={{ color: '#000' }}
               />
             </div>
+            
+            <button 
+              onClick={() => {
+                // Fallback to seller panel if seller hub URL is not configured
+                const sellerHubUrl = import.meta.env.VITE_SELLER_HUB_URL || 
+                                    window.location.origin.replace('customer', 'seller') || 
+                                    '/seller/register';
+                window.open(sellerHubUrl, '_blank');
+              }}
+              className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-2xl font-bold text-xs uppercase tracking-wide shadow-lg transition-all active:scale-95"
+            >
+              <Store className="w-4 h-4" />
+              Become a Seller
+            </button>
             
             <button 
               onClick={() => setIsCartOpen(true)}
@@ -504,100 +519,53 @@ const App: React.FC = () => {
           <>
         {/* Hero Section */}
         {!searchQuery && selectedCategory === 'all' && (
-          <section className="relative h-[85vh] flex items-end overflow-hidden bg-slate-950">
+          <section className="relative md:h-[70vh] sm:h-[60vh] h-[50vh] max-h-[760px] flex items-center overflow-hidden bg-slate-950 transition-all duration-500">
             <div className="absolute inset-0 z-0">
               <img 
                 src="https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?auto=format&fit=crop&q=80&w=1920" 
-                className="w-full h-full object-cover opacity-60 scale-105"
+                className="w-full h-full object-cover opacity-60"
+                style={{ objectPosition: 'center 35%' }}
                 alt="Luxury Lifestyle"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
+              <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-slate-950/20 to-slate-950"></div>
             </div>
 
-            <div className="max-w-[1400px] mx-auto px-6 pb-20 relative z-10 w-full flex items-end justify-between gap-8">
-              <div className="max-w-xl space-y-6">
+            <div className="max-w-[1400px] mx-auto px-6 relative z-10 w-full flex items-center justify-between gap-8">
+              <div className="max-w-xl space-y-5">
                 <div className="flex items-center gap-3 animate-in slide-in-from-left duration-700">
                   <span className="h-[1px] w-8 bg-indigo-500"></span>
-                  <span className="text-indigo-400 font-black text-[10px] uppercase tracking-[0.4em]">Amzify — Powering the Future of Shopping.</span>
+                  <span className="text-indigo-400 font-black text-[10px] uppercase tracking-normal whitespace-nowrap">Amzify — Powering the Future of Shopping.</span>
                 </div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/30 text-white/90 border border-white/20 text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-                  Limited Offer · Up to 40% Off
-                </div>
-                <h2 className="text-6xl md:text-7xl font-black text-white leading-none tracking-tighter animate-in slide-in-from-left duration-700 delay-100">
+                <h2 className="text-5xl sm:text-6xl md:text-6xl lg:text-7xl font-black text-white leading-none tracking-tighter animate-in slide-in-from-left duration-700 delay-100">
                   Art of<br />Living <span className="text-indigo-500">Lux.</span>
                 </h2>
-                <div className="flex gap-4">
+                
+                {/* Floating Glass Chips */}
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-2.5 max-w-[234px] md:max-w-[260px]">
+                  <div className="group bg-white/[0.12] backdrop-blur-xl border border-white/[0.18] rounded-[14px] px-3 md:px-3.5 py-2 md:py-2.5 shadow-[0_8px_24px_rgba(0,0,0,0.12)] cursor-pointer transition-all duration-200 hover:-translate-y-0.5 scale-90 md:scale-100 origin-left">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm">✨</span>
+                      <span className="text-white font-medium text-[13px] whitespace-nowrap">Up to 40% off premium fashion</span>
+                    </div>
+                  </div>
+                  <div className="hidden sm:block group bg-white/[0.12] backdrop-blur-xl border border-white/[0.18] rounded-[14px] px-3 md:px-3.5 py-2 md:py-2.5 shadow-[0_8px_24px_rgba(0,0,0,0.12)] cursor-pointer transition-all duration-200 hover:-translate-y-0.5 scale-90 md:scale-100 origin-left">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm">🎁</span>
+                      <span className="text-white font-medium text-[13px] whitespace-nowrap">₹500 gift on first order</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-2">
                   <button 
                     onClick={() => document.getElementById('shop-grid')?.scrollIntoView({behavior:'smooth'})}
                     className="px-10 py-5 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl flex items-center gap-3 group active:scale-95 transition-all animate-in slide-in-from-left duration-700 delay-200"
                   >
                     Shop Catalog <ArrowDown className="w-4 h-4 group-hover:translate-y-1 transition-transform" />
                   </button>
-                  <button 
-                    onClick={() => setIsBecomeSellerOpen(true)}
-                    className="px-10 py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl flex items-center gap-3 group active:scale-95 transition-all animate-in slide-in-from-left duration-700 delay-300"
-                  >
-                    Become a Seller <Store className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Offers Carousel on Right - Full Area */}
-              <div className="hidden lg:flex flex-col gap-3 flex-1 h-full">
-                <div className="space-y-1">
-                  <h3 className="text-2xl font-black text-white">Trending Offers</h3>
-                  <p className="text-white/60 text-sm font-semibold">Exclusive for you today</p>
-                </div>
-                <div className="relative group overflow-hidden flex-1 rounded-3xl">
-                  {/* Horizontal Scrolling Container */}
-                  <div 
-                    className="flex gap-4 h-full w-max"
-                    style={{
-                      animation: `slideOffersHorizontal 18s linear infinite`,
-                    }}
-                  >
-                    {[
-                      { title: 'Mega Sale', discount: 'Up to 40% OFF', desc: 'Premium fashion items', color: 'from-purple-500 to-pink-500' },
-                      { title: 'First Buy', discount: '₹500 Gift', desc: 'Your first order', color: 'from-blue-500 to-indigo-500' },
-                      { title: 'Flash Deal', discount: '3x Points', desc: 'Triple rewards', color: 'from-amber-500 to-orange-500' },
-                      { title: 'Top Sellers', discount: 'Free Shipping', desc: 'Orders above ₹999', color: 'from-green-500 to-emerald-500' },
-                      { title: 'Mega Sale', discount: 'Up to 40% OFF', desc: 'Premium fashion items', color: 'from-purple-500 to-pink-500' },
-                      { title: 'First Buy', discount: '₹500 Gift', desc: 'Your first order', color: 'from-blue-500 to-indigo-500' },
-                    ].map((offer, idx) => (
-                      <div
-                        key={idx}
-                        className={`flex-shrink-0 w-80 rounded-3xl bg-gradient-to-br ${offer.color} p-6 cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-105 text-white border border-white/20 backdrop-blur-sm flex flex-col justify-between h-full`}
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex flex-col gap-1">
-                              <h4 className="text-sm font-black uppercase tracking-wider text-white/90">{offer.title}</h4>
-                              <div className="text-3xl font-black leading-tight">{offer.discount}</div>
-                            </div>
-                            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0">
-                              <Sparkles className="w-5 h-5" />
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-sm font-semibold text-white/90">{offer.desc}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Gradient Fade Overlays */}
-                  <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-slate-950 to-transparent pointer-events-none z-10"></div>
-                  <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-slate-950 to-transparent pointer-events-none z-10"></div>
                 </div>
               </div>
             </div>
-
-            <style>{`
-              @keyframes slideOffersHorizontal {
-                0% { transform: translateX(0); }
-                100% { transform: translateX(calc(-320px * 4 - 1rem * 4)); }
-              }
-            `}</style>
           </section>
         )}
 
@@ -707,7 +675,13 @@ const App: React.FC = () => {
               Join thousands of sellers and reach millions of customers. Start your business journey with us today.
             </p>
             <button 
-              onClick={() => setIsBecomeSellerOpen(true)}
+              onClick={() => {
+                // Fallback to seller panel if seller hub URL is not configured
+                const sellerHubUrl = import.meta.env.VITE_SELLER_HUB_URL || 
+                                    window.location.origin.replace('customer', 'seller') || 
+                                    '/seller/register';
+                window.open(sellerHubUrl, '_blank');
+              }}
               className="px-8 py-4 bg-white text-indigo-600 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-indigo-50 transition-all shadow-xl"
             >
               Become a Seller
