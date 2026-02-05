@@ -19,6 +19,7 @@ import logisticsRoutes from './routes/logistics.js';
 import sellerApplicationsRoutes from './routes/sellerApplications.js';
 import sellerRoutes from './routes/seller.js';
 import customerAnalyticsRoutes from './routes/customerAnalytics.js';
+import chatbotRoutes from './routes/chatbot.js';
 
 // Load environment variables
 dotenv.config();
@@ -107,6 +108,7 @@ app.use('/api/logistics', logisticsRoutes);
 app.use('/api/seller-applications', sellerApplicationsRoutes);
 app.use('/api/seller', sellerRoutes);
 app.use('/api/seller', customerAnalyticsRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

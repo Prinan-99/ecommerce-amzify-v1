@@ -133,7 +133,7 @@ const LoginPortal: React.FC = () => {
                 className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1 px-3 py-1.5 bg-red-100 rounded-lg hover:bg-red-200 transition"
               >
                 <RefreshCw className="w-3 h-3" />
-                Try Again
+                Try Againgit 
               </button>
             </div>
           </div>
